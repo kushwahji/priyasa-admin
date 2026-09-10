@@ -1,0 +1,1 @@
+import {ModulePage} from '@/components/module-page';export default function Analytics(){return <ModulePage title="Analytics" description="Revenue, conversion, retention and campaign performance." endpoint="GET /admin/analytics — JSON reporting endpoint required; dashboard uses only live data already available."/>}
