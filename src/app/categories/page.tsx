@@ -1,0 +1,1 @@
+import {ModulePage} from '@/components/module-page';export default function Categories(){return <ModulePage title="Categories" description="Organize the product catalog." endpoint="GET/POST/PUT/DELETE /admin/catalog/categories — add to Laravel API before enabling writes."/>}
