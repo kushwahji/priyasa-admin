@@ -3,10 +3,55 @@ import {useEffect,useState} from 'react';
 import {api} from '@/lib/api';
 import {dateTime,apiMessage,titleCase} from '@/lib/format';
 import {PageHeader,Card,DataToolbar,Button,Badge,Loading,ErrorState,Empty,Modal} from '@/components/ui';
-type Conversation={phone:string;count:number;latest_at?:string;latest_direction?:string;latest_message?:string};type Message={id:number|string;phone:string;direction:string;message_type:string;message?:string|null;provider_message_id?:string|null;created_at?:string};type Template={id:number|string;key:string;name:string;language?:string|null;status?:string|null;category?:string|null;active:boolean};type Status={connected:boolean;phone?:string;verified_name?:string;quality_rating?:string;waba_id?:string;webhook_subscribed:boolean;last_tested_at?:string;last_error?:string|null};type ApiEnvelope<T>={success?:boolean;data?:T};
-export default function WhatsApp(){const [status,setStatus]=useState<Status|null>(null),[convos,setConvos]=useState<Conversation[]>([]),[selected,setSelected]=useState<string|null>(null),[messages,setMessages]=useState<Message[]>([]),[text,setText]=useState(''),[search,setSearch]=useState(''),[templates,setTemplates]=useState<Template[]>([]),[busy,setBusy]=useState(false),[error,setError]=useState(''),[tab,setTab]=useState<'inbox'|'templates'>('inbox');
-async function load(){setError('');try{const [s,c,t]=await Promise.all([api<ApiEnvelope<Status>>('/admin/whatsapp/status'),api<ApiEnvelope<Conversation[]>>('/admin/whatsapp/conversations'),api<ApiEnvelope<Template[]|{data:Template[]}>>(`/admin/whatsapp/templates?search=${encodeURIComponent(search)}`)]);setStatus(s.data||null);setConvos(c.data||[]);const tp=t.data;setTemplates(Array.isArray(tp)?tp:(tp?.data??[]))}catch(e){setError(apiMessage(e,'Unable to load WhatsApp data'))}}
-useEffect(()=>{load()},[]);useEffect(()=>{if(!selected)return;api<ApiEnvelope<Message[]>>(`/admin/whatsapp/conversations/${encodeURIComponent(selected)}/messages`).then(r=>setMessages(r.data||[])).catch(e=>setError(apiMessage(e,'Unable to load conversation')))},[selected]);
-async function reply(){if(!selected||!text.trim())return;setBusy(true);try{await api('/admin/whatsapp/reply',{method:'POST',headers:{'Idempotency-Key':crypto.randomUUID()},body:JSON.stringify({phone:selected,message:text.trim()})});setText('');const r=await api<ApiEnvelope<Message[]>>(`/admin/whatsapp/conversations/${encodeURIComponent(selected)}/messages`);setMessages(r.data||[]);await load()}catch(e){setError(apiMessage(e,'WhatsApp reply failed'))}finally{setBusy(false)}}
-async function sync(){setBusy(true);try{await api('/admin/whatsapp/templates/sync',{method:'POST',headers:{'Idempotency-Key':crypto.randomUUID()}});await load()}catch(e){setError(apiMessage(e,'Template sync failed'))}finally{setBusy(false)}}
-const filtered=convos.filter(c=>!search||c.phone.includes(search)||String(c.latest_message||'').toLowerCase().includes(search.toLowerCase()));return <section className="content"><PageHeader title="WhatsApp" description="Customer inbox, operator replies, connection health and Meta template synchronization."/>{error&&<ErrorState error={error} onRetry={load}/>}<div className="form-actions"><Button className={tab==='inbox'?'primary':''} onClick={()=>setTab('inbox')}>Inbox</Button><Button className={tab==='templates'?'primary':''} onClick={()=>setTab('templates')}>Templates</Button><Button onClick={load} disabled={busy}>Refresh</Button></div>{status&&<Card><div className="stats-grid"><div><div className="metric-label">Connection</div><b>{status.connected?'Connected':'Not connected'}</b></div><div><div className="metric-label">Business number</div><b>{status.phone||'—'}</b></div><div><div className="metric-label">Quality</div><b>{status.quality_rating||'—'}</b></div><div><div className="metric-label">Webhook</div><b>{status.webhook_subscribed?'Subscribed':'Not subscribed'}</b></div></div>{status.last_error&&<p className="error-text">{status.last_error}</p>}</Card>}{tab==='inbox'?<Card><DataToolbar value={search} onChange={setSearch} placeholder="Search phone or message…"/>{!status&&!error?<Loading/>:filtered.length?<div className="split-panel"><div className="conversation-list">{filtered.map(c=><button key={c.phone} className={`conversation ${selected===c.phone?'selected':''}`} onClick={()=>setSelected(c.phone)}><b>+{c.phone}</b><span>{c.latest_message||'No message'}</span><small>{dateTime(c.latest_at)}</small></button>)}</div><div className="chat-panel">{selected?<><div className="chat-head"><b>+{selected}</b><span>{messages.length} messages</span></div><div className="messages">{messages.map(m=><div key={String(m.id)} className={`message ${m.direction==='outbound'?'outbound':'inbound'}`}><span>{m.message||`[${titleCase(m.message_type)}]`}</span><small>{dateTime(m.created_at)}</small></div>)}</div><div className="reply-box"><textarea value={text} onChange={e=>setText(e.target.value)} placeholder="Reply to customer…" maxLength={4096}/><Button className="primary" onClick={reply} disabled={busy||!text.trim()}>{busy?'Sending…':'Send'}</Button></div></>:<Empty title="Select a conversation" text="Choose a customer from the inbox to view the conversation."/>}</div></div>:<Empty title="No WhatsApp conversations" text="Inbound WhatsApp messages will appear here."/>}</Card>:<Card><div className="page-head"><div><h2>WhatsApp templates</h2><p>Templates synchronized from the connected WhatsApp Business Account.</p></div><Button className="primary" onClick={sync} disabled={busy}>{busy?'Syncing…':'Sync templates'}</Button></div>{templates.length?<div className="table-wrap"><table className="table"><thead><tr><th>Name</th><th>Key</th><th>Language</th><th>Category</th><th>Status</th></tr></thead><tbody>{templates.map(t=><tr key={String(t.id)}><td><b>{t.name}</b></td><td>{t.key}</td><td>{t.language||'—'}</td><td>{t.category||'—'}</td><td><Badge>{t.status||(t.active?'Active':'Inactive')}</Badge></td></tr>)}</tbody></table></div>:<Empty title="No templates" text="Sync templates after connecting WhatsApp Cloud API."/>}</Card>}{selected&&<Modal title="Conversation details" onClose={()=>setSelected(null)}><p className="muted">Customer WhatsApp number: +{selected}</p><p className="muted">Direct text replies are subject to Meta's customer-care window.</p></Modal>}</section>}
+type Conversation={phone:string;count:number;latest_at?:string;latest_direction?:string;latest_message?:string};
+type Message={id:number|string;phone:string;direction:string;message_type:string;message?:string|null;provider_message_id?:string|null;created_at?:string};
+type Template={id:number|string;key:string;name:string;language?:string|null;status?:string|null;category?:string|null;active:boolean};
+type Status={connected:boolean;phone?:string;verified_name?:string;quality_rating?:string;waba_id?:string;webhook_subscribed:boolean;last_tested_at?:string;last_error?:string|null};
+
+type TemplatePayload=Template[]|{data:Template[]};
+
+export default function WhatsApp(){
+ const [status,setStatus]=useState<Status|null>(null),[convos,setConvos]=useState<Conversation[]>([]),[selected,setSelected]=useState<string|null>(null),[messages,setMessages]=useState<Message[]>([]),[text,setText]=useState(''),[search,setSearch]=useState(''),[templates,setTemplates]=useState<Template[]>([]),[busy,setBusy]=useState(false),[error,setError]=useState(''),[tab,setTab]=useState<'inbox'|'templates'>('inbox');
+ async function load(){
+  setError('');
+  try{
+   const [s,c,t]=await Promise.all([
+    api<Status>('/admin/whatsapp/status'),
+    api<Conversation[]>('/admin/whatsapp/conversations'),
+    api<TemplatePayload>(`/admin/whatsapp/templates?search=${encodeURIComponent(search)}`)
+   ]);
+   setStatus(s.data||null);
+   setConvos(c.data||[]);
+   const tp=t.data;
+   setTemplates(Array.isArray(tp)?tp:(tp?.data??[]));
+  }catch(e){setError(apiMessage(e,'Unable to load WhatsApp data'))}
+ }
+ useEffect(()=>{load()},[]);
+ useEffect(()=>{
+  if(!selected){setMessages([]);return}
+  api<Message[]>(`/admin/whatsapp/conversations/${encodeURIComponent(selected)}/messages`).then(r=>setMessages(r.data||[])).catch(e=>setError(apiMessage(e,'Unable to load conversation')))
+ },[selected]);
+ async function reply(){
+  if(!selected||!text.trim())return;
+  setBusy(true);
+  try{
+   await api('/admin/whatsapp/reply',{method:'POST',headers:{'Idempotency-Key':crypto.randomUUID()},body:JSON.stringify({phone:selected,message:text.trim()})});
+   setText('');
+   const r=await api<Message[]>(`/admin/whatsapp/conversations/${encodeURIComponent(selected)}/messages`);
+   setMessages(r.data||[]);
+   await load();
+  }catch(e){setError(apiMessage(e,'WhatsApp reply failed'))}finally{setBusy(false)}
+ }
+ async function sync(){
+  setBusy(true);
+  try{await api('/admin/whatsapp/templates/sync',{method:'POST',headers:{'Idempotency-Key':crypto.randomUUID()}});await load()}
+  catch(e){setError(apiMessage(e,'Template sync failed'))}finally{setBusy(false)}
+ }
+ const filtered=convos.filter(c=>!search||c.phone.includes(search)||String(c.latest_message||'').toLowerCase().includes(search.toLowerCase()));
+ return <section className="content"><PageHeader title="WhatsApp" description="Customer inbox, operator replies, connection health and Meta template synchronization."/>
+  {error&&<ErrorState error={error} onRetry={load}/>}<div className="form-actions"><Button className={tab==='inbox'?'primary':''} onClick={()=>setTab('inbox')}>Inbox</Button><Button className={tab==='templates'?'primary':''} onClick={()=>setTab('templates')}>Templates</Button><Button onClick={load} disabled={busy}>Refresh</Button></div>
+  {status&&<Card><div className="stats-grid"><div><div className="metric-label">Connection</div><b>{status.connected?'Connected':'Not connected'}</b></div><div><div className="metric-label">Business number</div><b>{status.phone||'—'}</b></div><div><div className="metric-label">Quality</div><b>{status.quality_rating||'—'}</b></div><div><div className="metric-label">Webhook</div><b>{status.webhook_subscribed?'Subscribed':'Not subscribed'}</b></div></div>{status.last_error&&<p className="error-text">{status.last_error}</p>}</Card>}
+  {tab==='inbox'?<Card><DataToolbar value={search} onChange={setSearch} placeholder="Search phone or message…"/>{!status&&!error?<Loading/>:filtered.length?<div className="split-panel"><div className="conversation-list">{filtered.map(c=><button key={c.phone} className={`conversation ${selected===c.phone?'selected':''}`} onClick={()=>setSelected(c.phone)}><b>+{c.phone}</b><span>{c.latest_message||'No message'}</span><small>{dateTime(c.latest_at)}</small></button>)}</div><div className="chat-panel">{selected?<><div className="chat-head"><b>+{selected}</b><span>{messages.length} messages</span></div><div className="messages">{messages.map(m=><div key={String(m.id)} className={`message ${m.direction==='outbound'?'outbound':'inbound'}`}><span>{m.message||`[${titleCase(m.message_type)}]`}</span><small>{dateTime(m.created_at)}</small></div>)}</div><div className="reply-box"><textarea value={text} onChange={e=>setText(e.target.value)} placeholder="Reply to customer…" maxLength={4096}/><Button className="primary" onClick={reply} disabled={busy||!text.trim()}>{busy?'Sending…':'Send'}</Button></div></>:<Empty title="Select a conversation" text="Choose a customer from the inbox to view the conversation."/>}</div></div>:<Empty title="No WhatsApp conversations" text="Inbound WhatsApp messages will appear here."/>}</Card>:<Card><div className="page-head"><div><h2>WhatsApp templates</h2><p>Templates synchronized from the connected WhatsApp Business Account.</p></div><Button className="primary" onClick={sync} disabled={busy}>{busy?'Syncing…':'Sync templates'}</Button></div>{templates.length?<div className="table-wrap"><table className="table"><thead><tr><th>Name</th><th>Key</th><th>Language</th><th>Category</th><th>Status</th></tr></thead><tbody>{templates.map(t=><tr key={String(t.id)}><td><b>{t.name}</b></td><td>{t.key}</td><td>{t.language||'—'}</td><td>{t.category||'—'}</td><td><Badge>{t.status||(t.active?'Active':'Inactive')}</Badge></td></tr>)}</tbody></table></div>:<Empty title="No templates" text="Sync templates after connecting WhatsApp Cloud API."/>}</Card>}
+  {selected&&<Modal title="Conversation details" onClose={()=>setSelected(null)}><p className="muted">Customer WhatsApp number: +{selected}</p><p className="muted">Direct text replies are subject to Meta's customer-care window.</p></Modal>}
+ </section>
+}
