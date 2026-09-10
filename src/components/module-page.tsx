@@ -1,0 +1,2 @@
+import {Card,PageHeader} from './ui';
+export function ModulePage({title,description,endpoint}:{title:string;description:string;endpoint:string}){return <section className="content"><PageHeader title={title} description={description}/><Card><div className="empty"><strong>API contract required</strong><span>This module is intentionally not backed by mock data. The current Laravel API does not expose a JSON admin endpoint for this screen.</span><code style={{marginTop:8,fontSize:11}}>{endpoint}</code></div></Card></section>}
