@@ -1,0 +1,1 @@
+import {ModulePage} from '@/components/module-page';export default function WhatsApp(){return <ModulePage title="WhatsApp" description="Inbox, templates and customer messaging automation." endpoint="GET/POST /admin/commerce/whatsapp/* — current Laravel routes are web/HTML contracts, not Next.js JSON contracts."/>}
