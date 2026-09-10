@@ -1,0 +1,1 @@
+import {ModulePage} from '@/components/module-page';export default function Customers(){return <ModulePage title="Customers" description="Customer profiles, addresses and order history." endpoint="GET /admin/customers — JSON admin endpoint not currently exposed by PriyasaCore."/>}
