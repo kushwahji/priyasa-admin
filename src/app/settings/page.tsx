@@ -1,0 +1,1 @@
+import {ModulePage} from '@/components/module-page';export default function Settings(){return <ModulePage title="Settings" description="Store configuration, checkout, notifications and integration controls." endpoint="GET/PUT /admin/settings — expose controlled system settings API before enabling writes."/>}
