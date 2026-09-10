@@ -1,0 +1,1 @@
+import {ModulePage} from '@/components/module-page';export default function Audit(){return <ModulePage title="Audit Logs" description="Trace administrative actions and security-sensitive changes." endpoint="GET /admin/audit-logs — JSON audit endpoint required."/>}
