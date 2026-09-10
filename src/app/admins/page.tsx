@@ -1,0 +1,1 @@
+import {ModulePage} from '@/components/module-page';export default function Admins(){return <ModulePage title="Admins & Roles" description="Role-based access control for the administration team." endpoint="GET/POST/PUT /admin/users and permissions — backend RBAC JSON contract required."/>}
