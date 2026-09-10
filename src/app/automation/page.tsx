@@ -1,0 +1,1 @@
+import {ModulePage} from '@/components/module-page';export default function Automation(){return <ModulePage title="Automation" description="Automations, triggers and AI-assisted commerce workflows." endpoint="GET/POST /admin/commerce/automations — current Laravel route returns server-rendered HTML; add JSON API contract."/>}
