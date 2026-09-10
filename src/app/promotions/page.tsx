@@ -1,0 +1,1 @@
+import {ModulePage} from '@/components/module-page';export default function Promotions(){return <ModulePage title="Promotions" description="Coupons, offers and promotion rules." endpoint="GET/POST/PUT/DELETE /admin/promotions — JSON admin endpoint required."/>}
