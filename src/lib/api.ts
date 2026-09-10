@@ -1,0 +1,4 @@
+const BASE=process.env.NEXT_PUBLIC_API_URL||'https://api.priyasa.com/api/v1';
+export type ApiResult<T=unknown>={success?:boolean;data?:T;message?:string;errors?:Record<string,string[]>};
+export async function api<T=unknown>(path:string,init:RequestInit={}){const token=typeof window!=='undefined'?localStorage.getItem('priyasa_admin_token'):null;const headers=new Headers(init.headers);headers.set('Accept','application/json');if(init.body)headers.set('Content-Type','application/json');if(token)headers.set('Authorization',`Bearer ${token}`);const res=await fetch(`${BASE}${path}`,{...init,headers,cache:'no-store'});const body:ApiResult<T>=await res.json().catch(()=>({message:'Invalid API response'}));if(!res.ok)throw new Error(body.message||`API request failed (${res.status})`);return body}
+export const apiBase=BASE;
