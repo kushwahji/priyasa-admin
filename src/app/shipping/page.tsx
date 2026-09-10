@@ -1,0 +1,1 @@
+import {ModulePage} from '@/components/module-page';export default function Shipping(){return <ModulePage title="Shipping" description="Shiprocket/Shipprime fulfilment operations." endpoint="POST /admin/shipping/* — expose JSON shipment operations from Laravel before enabling actions."/>}
