@@ -1,3 +1,76 @@
 'use client';
-import {useEffect,useState} from 'react';import {api} from '@/lib/api';import {Card,PageHeader,DataToolbar,Button,Modal,Loading,ErrorState,Badge} from '@/components/ui';
-export default function Returns(){const [rows,setRows]=useState<any[]>([]);const [q,setQ]=useState('');const [selected,setSelected]=useState<any>(null);const [status,setStatus]=useState('');const [note,setNote]=useState('');const [error,setError]=useState('');const [busy,setBusy]=useState(false);async function load(){try{const r=await api<any>('/admin/returns');const d=r.data;setRows(Array.isArray(d)?d:d?.data||d?.items||[])}catch(e){setError(e instanceof Error?e.message:'Request failed')}}useEffect(()=>{load()},[]);const filtered=rows.filter(v=>JSON.stringify(v).toLowerCase().includes(q.toLowerCase()));async function update(){if(!selected)return;setBusy(true);try{await api(`/admin/returns/${selected.id}/status`,{method:'POST',body:JSON.stringify({status,note})});setSelected(null);load()}catch(e){setError(e instanceof Error?e.message:'Update failed')}finally{setBusy(false)}}return <section className="content"><PageHeader title="Returns" description="Review customer return requests and update their workflow."/><Card><DataToolbar value={q} onChange={setQ} placeholder="Search return, order, customer…"/>{error&&<ErrorState error={error} onRetry={load}/>} {!rows.length&&!error?<Loading/>:filtered.length?<div className="table-wrap"><table className="table"><thead><tr><th>Return</th><th>Order</th><th>Customer</th><th>Status</th><th>Created</th><th/></tr></thead><tbody>{filtered.map((r:any,i)=><tr key={String(r.id||i)}><td><b>#{r.id||'—'}</b></td><td>{r.order?.order_number||r.order_number||r.order_id||'—'}</td><td>{r.customer?.name||r.customer?.phone||'—'}</td><td><Badge>{r.status||'—'}</Badge></td><td>{r.created_at?new Date(r.created_at).toLocaleDateString():'—'}</td><td>{r.id&&<Button onClick={()=>{setSelected(r);setStatus(r.status||'')}}>Review</Button>}</td></tr>)}</tbody></table></div>:<div className="empty">No returns match the search.</div>}</Card>{selected&&<Modal title={`Return #${selected.id}`} onClose={()=>setSelected(null)}><div className="form"><div className="card"><div className="metric-label">Reason</div><div style={{fontSize:12,marginTop:5}}>{selected.reason||'—'}</div></div><label>Status<select value={status} onChange={e=>setStatus(e.target.value)}><option value="requested">Requested</option><option value="approved">Approved</option><option value="rejected">Rejected</option><option value="received">Received</option><option value="refunded">Refunded</option></select></label><label>Note<textarea value={note} onChange={e=>setNote(e.target.value)} placeholder="Internal processing note…"/></label><div className="form-actions"><Button onClick={()=>setSelected(null)}>Cancel</Button><Button className="primary" disabled={busy} onClick={update}>{busy?'Updating…':'Update return'}</Button></div></div></Modal>}</section>}
+import {useEffect,useMemo,useState} from 'react';
+import {api} from '@/lib/api';
+import {Card,PageHeader,DataToolbar,Button,Modal,Loading,ErrorState,Badge} from '@/components/ui';
+import {money,dateTime,titleCase,apiMessage} from '@/lib/format';
+
+type ReturnRow={
+  id:number|string;
+  status?:string;
+  reason?:string|null;
+  note?:string|null;
+  amount?:number|string|null;
+  refund_amount?:number|string|null;
+  created_at?:string;
+  updated_at?:string;
+  order?:{id?:number|string;order_number?:string;grand_total?:number|string;total?:number|string;currency?:string}|null;
+  order_id?:number|string;
+  order_number?:string;
+  customer?:{name?:string;phone?:string;email?:string}|null;
+};
+
+const statuses=['','requested','approved','rejected','received','refunded'];
+const terminalStatuses=new Set(['rejected','refunded']);
+
+function amountOf(r:ReturnRow){return r.refund_amount??r.amount??r.order?.grand_total??r.order?.total??null}
+
+export default function Returns(){
+  const [rows,setRows]=useState<ReturnRow[]>([]);
+  const [q,setQ]=useState('');
+  const [statusFilter,setStatusFilter]=useState('');
+  const [selected,setSelected]=useState<ReturnRow|null>(null);
+  const [status,setStatus]=useState('');
+  const [note,setNote]=useState('');
+  const [error,setError]=useState('');
+  const [busy,setBusy]=useState(false);
+
+  async function load(){setError('');try{const r=await api<ReturnRow[]|{data:ReturnRow[]}>('/admin/returns');const d=r.data;setRows(Array.isArray(d)?d:(d?.data||[]))}catch(e){setError(apiMessage(e,'Unable to load returns'))}}
+  useEffect(()=>{load()},[]);
+
+  const filtered=useMemo(()=>rows.filter(v=>{
+    if(statusFilter&&v.status!==statusFilter)return false;
+    return JSON.stringify(v).toLowerCase().includes(q.trim().toLowerCase());
+  }),[rows,q,statusFilter]);
+
+  function review(r:ReturnRow){setSelected(r);setStatus(r.status||'requested');setNote(r.note||'')}
+
+  async function update(){
+    if(!selected||!status||status===selected.status&&!note.trim())return;
+    if(status==='refunded'&&selected.status!=='refunded'&&!window.confirm('Mark this return as refunded? Only do this after the refund has actually been processed.'))return;
+    setBusy(true);setError('');
+    try{
+      await api(`/admin/returns/${selected.id}/status`,{method:'POST',body:JSON.stringify({status,note})});
+      setSelected(null);setNote('');await load();
+    }catch(e){setError(apiMessage(e,'Return update failed'))}finally{setBusy(false)}
+  }
+
+  return <section className="content">
+    <PageHeader title="Returns & refunds" description="Review customer return requests and keep approval, receipt and refund state aligned with Core."/>
+    <Card>
+      <DataToolbar value={q} onChange={setQ} placeholder="Search return, order, customer…">
+        <select className="filter-select" value={statusFilter} onChange={e=>setStatusFilter(e.target.value)}>{statuses.map(s=><option key={s} value={s}>{s?titleCase(s):'All statuses'}</option>)}</select>
+        <Button onClick={load} disabled={busy}>Refresh</Button>
+      </DataToolbar>
+      {error&&<ErrorState error={error} onRetry={load}/>} 
+      {!rows.length&&!error?<Loading/>:filtered.length?<div className="table-wrap"><table className="table"><thead><tr><th>Return</th><th>Order</th><th>Customer</th><th>Amount</th><th>Status</th><th>Created</th><th/></tr></thead><tbody>{filtered.map((r,i)=><tr key={String(r.id||i)}><td><b>#{r.id||'—'}</b></td><td>{r.order?.order_number||r.order_number||r.order_id||'—'}</td><td>{r.customer?.name||r.customer?.phone||'—'}</td><td>{amountOf(r)!=null?money(Number(amountOf(r)),r.order?.currency||'INR'):'—'}</td><td><Badge>{titleCase(r.status||'unknown')}</Badge></td><td>{r.created_at?dateTime(r.created_at):'—'}</td><td>{r.id&&<Button onClick={()=>review(r)}>Review</Button>}</td></tr>)}</tbody></table></div>:<div className="empty"><strong>No returns</strong><span>No return requests match the current filters.</span></div>}
+    </Card>
+    {selected&&<Modal title={`Return #${selected.id}`} onClose={()=>setSelected(null)}><div className="form">
+      <div className="form-grid"><Card><div className="metric-label">Order</div><b>#{selected.order?.order_number||selected.order_number||selected.order_id||'—'}</b><div className="muted">{selected.customer?.name||'Customer'} · {selected.customer?.phone||selected.customer?.email||'—'}</div></Card><Card><div className="metric-label">Refund value</div><b>{amountOf(selected)!=null?money(Number(amountOf(selected)),selected.order?.currency||'INR'):'Not provided'}</b><div className="muted">Current state: {titleCase(selected.status||'unknown')}</div></Card></div>
+      <div className="card"><div className="metric-label">Reason</div><div style={{fontSize:13,marginTop:6}}>{selected.reason||'No reason supplied.'}</div></div>
+      <label>Status<select value={status} disabled={busy||selected.status==='refunded'} onChange={e=>setStatus(e.target.value)}>{statuses.filter(Boolean).map(s=><option key={s} value={s}>{titleCase(s)}</option>)}</select></label>
+      <label>Internal note<textarea value={note} disabled={busy} onChange={e=>setNote(e.target.value)} placeholder="QC / approval / refund processing note…"/></label>
+      {terminalStatuses.has(selected.status||'')&&<div className="muted">This return is in a terminal state and should normally not be changed.</div>}
+      <div className="form-actions"><Button onClick={()=>setSelected(null)}>Close</Button><Button className="primary" disabled={busy||selected.status==='refunded'||(status===selected.status&&!note.trim())} onClick={update}>{busy?'Saving…':'Save return state'}</Button></div>
+    </div></Modal>}
+  </section>
+}
