@@ -18,7 +18,7 @@ export async function api<T=unknown>(path:string,init:RequestInit={}){
   const externalSignal=init.signal;
   const timeout=typeof window!=='undefined'?window.setTimeout(()=>controller.abort(),30000):setTimeout(()=>controller.abort(),30000);
   try{
-    const res=await fetch(`${BASE}${path.startsWith('/')?path:`/${path}`}`,{...init,headers,cache:'no-store',signal:externalSignal||controller.signal});
+    const res=await fetch(`${BASE}${path.startsWith('/')?path:`/${path}`}`,{...init,headers,cache:'no-store',credentials:'include',signal:externalSignal||controller.signal});
     if(res.status===204)return {success:true} as ApiResult<T>;
     const text=await res.text();
     let body:ApiResult<T>={};
