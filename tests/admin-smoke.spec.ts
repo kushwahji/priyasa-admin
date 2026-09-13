@@ -15,4 +15,28 @@ test.describe('Priyasa Admin production smoke',()=>{
   await page.getByLabel(/administrator email/i).fill('admin@example.com');
   await expect(button).toBeEnabled();
  });
+
+ test('authenticated API operations workspace renders the live route inventory',async({page})=>{
+  await page.addInitScript(()=>{
+   localStorage.setItem('priyasa_admin_token','e2e-test-token');
+   localStorage.setItem('priyasa_admin_user',JSON.stringify({name:'E2E Admin',role:'super_admin'}));
+  });
+  await page.route('**/api/proxy/docs/openapi.routes.json',async route=>route.fulfill({status:200,contentType:'application/json',body:JSON.stringify({data:[
+   {method:'GET',uri:'api/v1/admin/orders',action:'OrderController@index'},
+   {method:'POST',uri:'api/v1/admin/orders/{order}/status',action:'OrderController@status'},
+   {method:'GET',uri:'api/v1/admin/finance/reports/tax',action:'FinancialReportsController@tax'}
+  ]})}));
+  await page.goto('/api-ops');
+  await expect(page.getByRole('heading',{name:/api operations/i})).toBeVisible();
+  await expect(page.getByText('api/v1/admin/orders',{exact:true}).first()).toBeVisible();
+  await expect(page.getByText('3 routes',{exact:true})).toBeVisible();
+ });
+
+ test('authenticated finance workspace is discoverable from the shell',async({page})=>{
+  await page.addInitScript(()=>localStorage.setItem('priyasa_admin_token','e2e-test-token'));
+  await page.route('**/api/proxy/docs/openapi.routes.json',async route=>route.fulfill({status:200,contentType:'application/json',body:JSON.stringify({data:[{method:'GET',uri:'api/v1/admin/finance/reports/tax',action:'FinancialReportsController@tax'}]})}));
+  await page.goto('/finance');
+  await expect(page.getByRole('heading',{name:/analytics & finance/i})).toBeVisible();
+  await expect(page.getByText('finance/reports/tax',{exact:false})).toBeVisible();
+ });
 });
