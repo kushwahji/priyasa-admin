@@ -23,12 +23,12 @@ export default function Login(){
   try{
    const r=await api<any>('/auth/admin/email-otp',{method:'POST',body:JSON.stringify({email:normalized})});
    const data=r.data||r;
-   const id=data.challengeId||data.challenge_id;
-   if(!id)throw new Error('OTP challenge was not returned by the API.');
+   const id=data.request_id||data.requestId||data.challengeId||data.challenge_id;
+   if(!id)throw new Error('OTP request was not created. Please try again.');
    setChallengeId(id);
    setSent(true);
    setOtp('');
-   setSeconds(Number(data.resendAfterSeconds||data.resend_after_seconds||30));
+   setSeconds(Number(data.retry_after||data.resendAfterSeconds||data.resend_after_seconds||60));
   }catch(err){setError(err instanceof Error?err.message:'Unable to send OTP. Please try again.')}finally{setBusy(false)}
  }
 
@@ -36,11 +36,12 @@ export default function Login(){
   if(!challengeId){setError('Your OTP session has expired. Please request a new code.');return}
   setBusy(true);setError('');
   try{
-   const r=await api<any>('/auth/admin/email-otp/verify',{method:'POST',body:JSON.stringify({email:email.trim().toLowerCase(),code:otp,challengeId})});
+   const r=await api<any>('/auth/admin/email-otp/verify',{method:'POST',body:JSON.stringify({email:email.trim().toLowerCase(),otp,request_id:challengeId})});
    const data=r.data||r;
-   if(data.role!=='ADMIN'&&data.role!=='STAFF')throw new Error('This account is not authorized for the admin portal.');
+   const role=String(data.role||data.user?.role||'').toUpperCase();
+   if(role && role!=='ADMIN'&&role!=='STAFF'&&role!=='SUPER_ADMIN')throw new Error('This account is not authorized for the admin portal.');
    if(data.token)localStorage.setItem('priyasa_admin_token',data.token);
-   localStorage.setItem('priyasa_admin_user',JSON.stringify({role:data.role}));
+   localStorage.setItem('priyasa_admin_user',JSON.stringify(data.user||{role:role||'ADMIN'}));
    router.replace('/');
    router.refresh();
   }catch(err){setError(err instanceof Error?err.message:'Invalid or expired OTP. Please try again.')}finally{setBusy(false)}
