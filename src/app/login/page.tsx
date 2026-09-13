@@ -28,7 +28,7 @@ export default function Login(){
    setChallengeId(id);
    setSent(true);
    setOtp('');
-   setSeconds(30);
+   setSeconds(Number(data.resendAfterSeconds||data.resend_after_seconds||30));
   }catch(err){setError(err instanceof Error?err.message:'Unable to send OTP. Please try again.')}finally{setBusy(false)}
  }
 
@@ -39,6 +39,8 @@ export default function Login(){
    const r=await api<any>('/auth/admin/email-otp/verify',{method:'POST',body:JSON.stringify({email:email.trim().toLowerCase(),code:otp,challengeId})});
    const data=r.data||r;
    if(data.role!=='ADMIN'&&data.role!=='STAFF')throw new Error('This account is not authorized for the admin portal.');
+   if(data.token)localStorage.setItem('priyasa_admin_token',data.token);
+   localStorage.setItem('priyasa_admin_user',JSON.stringify({role:data.role}));
    router.replace('/');
    router.refresh();
   }catch(err){setError(err instanceof Error?err.message:'Invalid or expired OTP. Please try again.')}finally{setBusy(false)}
