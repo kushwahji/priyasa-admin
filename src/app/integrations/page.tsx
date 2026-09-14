@@ -30,25 +30,21 @@ export default function Integrations(){
       ]);
       const value=integrationResult.data;
       const base:Integration[]=(Array.isArray(value)?value:Array.isArray(value?.data)?value.data:[]).map((r:any)=>({
-        key:String(r?.key||''),
-        name:String(r?.name||r?.key||'Integration'),
-        description:String(r?.description||''),
-        enabled:r?.enabled,
-        status:r?.status,
-        configured:r?.configured,
-        last_error:r?.last_error??null,
-        error:r?.error??null,
-        connected_at:r?.connected_at??null,
-        last_tested_at:r?.last_tested_at??null,
+        key:String(r?.key||''),name:String(r?.name||r?.key||'Integration'),description:String(r?.description||''),enabled:r?.enabled,status:r?.status,configured:r?.configured,last_error:r?.last_error??null,error:r?.error??null,connected_at:r?.connected_at??null,last_tested_at:r?.last_tested_at??null,
       }));
-      const meta=metaResult.data;
-      const woo=wooResult.data;
+      const meta=metaResult.data;const woo=wooResult.data;
       const metaRow:Integration={key:'meta',name:'Meta / Facebook & Instagram',description:'Authorize Meta Business assets through OAuth.',enabled:Boolean(meta?.connected),status:meta?.connected?'connected':'disconnected',connected_at:meta?.connected_at||null,last_tested_at:meta?.expires_at||null};
-      const mergedWoo:Integration={...(wooRowSafe(base)),key:'woocommerce',name:'WooCommerce',description:'Use WooCommerce as the external catalog and order source. Credentials are server-managed in PriyasaCore.',enabled:Boolean(woo?.connected),status:woo?.connected?'connected':'disconnected',configured:Boolean(woo?.configured),last_error:woo?.error||base.find(r=>r.key==='woocommerce')?.last_error||null};
+      const existingWoo=base.find(r=>r.key==='woocommerce');
+      const mergedWoo:Integration={
+        key:'woocommerce',name:'WooCommerce',
+        description:existingWoo?.description||'Use WooCommerce as the external catalog and order source. Credentials are server-managed in PriyasaCore.',
+        enabled:Boolean(woo?.connected),status:woo?.connected?'connected':'disconnected',configured:Boolean(woo?.configured),
+        last_error:woo?.error||existingWoo?.last_error||null,error:existingWoo?.error||null,
+        connected_at:existingWoo?.connected_at||null,last_tested_at:existingWoo?.last_tested_at||null,
+      };
       setRows([...base.filter(r=>r.key!=='meta'&&r.key!=='meta_ads'&&r.key!=='woocommerce'),mergedWoo,metaRow]);
     }catch(e){setError(e instanceof Error?e.message:'Unable to load integrations.')}finally{setLoading(false)}
   }
-  function wooRowSafe(source:Integration[]):Integration{return source.find(r=>r.key==='woocommerce')||{key:'woocommerce',name:'WooCommerce',description:'',enabled:false,status:'disconnected'};}
   useEffect(()=>{void load()},[]);
   const items=useMemo(()=>definitions.map(d=>({...d,...(rows.find(r=>r.key===d.key)||{})})),[rows]);
 
