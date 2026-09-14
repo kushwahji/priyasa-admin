@@ -1,9 +1,13 @@
 name: Admin CI
 on:
   push:
-    branches: [main]
+    branches:
+      - main
+      - priyasacore-e2e-admin
   pull_request:
-    branches: [main]
+    branches:
+      - main
+      - priyasacore-e2e-admin
 jobs:
   build:
     runs-on: ubuntu-latest
@@ -12,6 +16,7 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: 22
+          cache: npm
       - run: npm install --no-audit --no-fund
       - run: npx tsc --noEmit
       - run: npm run build
