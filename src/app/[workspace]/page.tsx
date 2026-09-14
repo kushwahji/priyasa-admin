@@ -11,7 +11,7 @@ export default async function DynamicAdminWorkspace({params}:{params:Promise<{wo
     shipping:'shipping',cms:'website',notifications:'communications',automation:'automation',
     integrations:'integrations',admins:'security',settings:'security',audit:'security',analytics:'analytics',
     merchandising:'marketing',whatsapp:'communications',categories:'catalog',collections:'catalog',reviews:'catalog',
-    support:'support',finance:'analytics',fulfillment:'shipping',api-ops:'operations'
+    support:'support',finance:'analytics',fulfillment:'shipping','api-ops':'operations'
   };
   const capabilityKey=keyMap[workspace];
   if(!capabilityKey || !ADMIN_CAPABILITIES.some(c=>c.key===capabilityKey)) return notFound();
