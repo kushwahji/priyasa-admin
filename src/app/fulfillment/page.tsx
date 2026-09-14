@@ -1,2 +1,27 @@
-import AdminWorkspace from '@/components/admin-workspace';
-export default function FulfillmentPage(){return <AdminWorkspace capabilityKey="shipping"/>}
+'use client';
+import Link from 'next/link';
+import {useEffect,useMemo,useState} from 'react';
+import {AlertTriangle,CheckCircle2,Clock3,PackageCheck,RefreshCw,Truck} from 'lucide-react';
+import {api} from '@/lib/api';
+import {apiMessage,dateTime,titleCase} from '@/lib/format';
+import {Order,Paginated} from '@/lib/types';
+import {PageHeader,Card,DataToolbar,Pagination,Button,Badge,Loading,ErrorState} from '@/components/ui';
+
+const stages=['confirmed','processing','packed','shipped','in_transit','out_for_delivery','delivered'];
+const terminal=new Set(['cancelled','refunded']);
+const money=(n:number)=>`₹${Number(n||0).toLocaleString('en-IN',{maximumFractionDigits:2})}`;
+
+type Bucket={label:string;count:number;icon:any;href:string};
+export default function FulfillmentPage(){
+ const [list,setList]=useState<Paginated<Order>|null>(null),[q,setQ]=useState(''),[status,setStatus]=useState(''),[page,setPage]=useState(1),[loading,setLoading]=useState(true),[busy,setBusy]=useState(false),[error,setError]=useState(''),[updated,setUpdated]=useState('');
+ async function load(){setLoading(true);setError('');try{const p=new URLSearchParams({page:String(page),per_page:'50'});if(q)p.set('search',q);if(status)p.set('status',status);const r=await api<Paginated<Order>>(`/admin/orders?${p}`);setList(r.data||null);setUpdated(new Date().toISOString())}catch(e){setError(apiMessage(e,'Unable to load fulfillment queue'))}finally{setLoading(false)}}
+ useEffect(()=>{load()},[page,status]);useEffect(()=>{const t=setTimeout(()=>{setPage(1);load()},350);return()=>clearTimeout(t)},[q]);
+ const data=list?.data||[];
+ const buckets:Bucket[]=useMemo(()=>[
+  {label:'Ready to process',count:data.filter(o=>['confirmed','processing'].includes(o.status)).length,icon:Clock3,href:'/orders'},
+  {label:'Packed',count:data.filter(o=>o.status==='packed').length,icon:PackageCheck,href:'/orders'},
+  {label:'In transit',count:data.filter(o=>['shipped','in_transit','out_for_delivery'].includes(o.status)).length,icon:Truck,href:'/shipping'},
+  {label:'Delivered',count:data.filter(o=>o.status==='delivered').length,icon:CheckCircle2,href:'/orders'}
+ ],[data]);
+ async function advance(o:Order){const next=stages[stages.indexOf(o.status)+1];if(!next||terminal.has(o.status))return;if(!window.confirm(`Move #${o.order_number||o.id} to ${titleCase(next)}?`))return;setBusy(true);setError('');try{await api(`/admin/orders/${o.id}/status`,{method:'POST',body:JSON.stringify({status:next,note:'Fulfillment queue action'})});await load()}catch(e){setError(apiMessage(e,'Unable to advance fulfillment state'))}finally{setBusy(false)}}
+ return <section className="content"><PageHeader title="Fulfillment Command Center" description="Prioritize order handling from confirmation through delivery." action={<Button onClick={load} disabled={loading||busy}><RefreshCw size={14}/> {loading?'Loading…':'Refresh'}</Button>}/>{error&&<ErrorState error={error} onRetry={load}/>}<div className="grid">{buckets.map(({label,count,icon:Icon,href})=><Link href={href} key={label}><Card><div className="metric-label">{label}</div><div className="metric">{count}</div><Icon size={18}/></Card></Link>)}</div><Card style={{marginTop:16}}><DataToolbar value={q} onChange={v=>{setPage(1);setQ(v)}} placeholder="Search order number or customer…"><select className="filter-select" value={status} onChange={e=>{setPage(1);setStatus(e.target.value)}}><option value="">Active fulfillment</option>{['confirmed','processing','packed','shipped','in_transit','out_for_delivery','delivered'].map(s=><option key={s} value={s}>{titleCase(s)}</option>)}</select><Button onClick={load}>Refresh</Button></DataToolbar>{loading&&!list?<Loading/>:data.length?<div className="table-wrap"><table className="table"><thead><tr><th>Order</th><th>Customer</th><th>Status</th><th>Total</th><th>Created</th><th>Action</th></tr></thead><tbody>{data.map(o=>{const next=stages[stages.indexOf(o.status)+1];return <tr key={String(o.id)}><td><Link href={`/orders/${o.id}`}><b>#{o.order_number||o.id}</b></Link></td><td>{o.customer?.name||o.customer?.phone||'—'}</td><td><Badge>{titleCase(o.status)}</Badge></td><td>{money(Number(o.grand_total??o.total??0))}</td><td>{dateTime(o.created_at)}</td><td><div className="form-actions"><Link href={`/orders/${o.id}`} className="btn">Open</Link>{next&&<Button disabled={busy} className="primary" onClick={()=>advance(o)}>→ {titleCase(next)}</Button>}</div></td></tr>})}</tbody></table></div>:<div className="empty"><strong>No fulfillment orders</strong><span>No orders match the current queue.</span></div>}<Pagination page={list?.current_page||1} lastPage={list?.last_page||1} onChange={setPage}/></Card><div className="section-grid"><Card><div className="card-title">Fulfillment rules</div><div className="quick" style={{marginTop:14}}><div><b>State transitions</b><span>Core remains authoritative for allowed order status changes.</span></div><div><b>Shipment creation</b><span>Use the order detail or Shipping workspace when an order is eligible.</span></div><div><b>Terminal protection</b><span>Cancelled and refunded orders are not advanced by this queue.</span></div></div></Card><Card><div className="card-title">Queue health</div><div className="quick" style={{marginTop:14}}><div><b>Records loaded</b><span>{list?.total??0} matching orders</span></div><div><b>Current page</b><span>{list?.data?.length??0} records</span></div><div><b>Last refreshed</b><span>{dateTime(updated)}</span></div></div>{data.some(o=>o.status==='payment_failed'||o.status==='pending_payment')&&<div style={{marginTop:14}}><Badge><AlertTriangle size={13}/> Payment-gated orders require Orders review.</Badge></div>}</Card></div></section>}
