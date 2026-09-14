@@ -29,7 +29,7 @@ export default function Integrations(){
         api<any>('/admin/integrations/woocommerce/status').catch(()=>({data:null})),
       ]);
       const value=integrationResult.data;
-      const base:Integration[]=(Array.isArray(value)?value:Array.isArray(value?.data)?value.data:[]).map((r:any)=>({
+      const base:Integration[]=(Array.isArray(value)?value:Array.isArray(value?.data)?value.data:[]).map((r:any):Integration=>({
         key:String(r?.key||''),name:String(r?.name||r?.key||'Integration'),description:String(r?.description||''),enabled:r?.enabled,status:r?.status,configured:r?.configured,last_error:r?.last_error??null,error:r?.error??null,connected_at:r?.connected_at??null,last_tested_at:r?.last_tested_at??null,
       }));
       const meta=metaResult.data;const woo=wooResult.data;
@@ -42,7 +42,9 @@ export default function Integrations(){
         last_error:woo?.error||existingWoo?.last_error||null,error:existingWoo?.error||null,
         connected_at:existingWoo?.connected_at||null,last_tested_at:existingWoo?.last_tested_at||null,
       };
-      setRows([...base.filter(r=>r.key!=='meta'&&r.key!=='meta_ads'&&r.key!=='woocommerce'),mergedWoo,metaRow]);
+      const filtered:Integration[]=base.filter(r=>r.key!=='meta'&&r.key!=='meta_ads'&&r.key!=='woocommerce');
+      const nextRows:Integration[]=[...filtered,mergedWoo,metaRow];
+      setRows(nextRows);
     }catch(e){setError(e instanceof Error?e.message:'Unable to load integrations.')}finally{setLoading(false)}
   }
   useEffect(()=>{void load()},[]);
