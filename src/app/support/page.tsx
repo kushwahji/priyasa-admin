@@ -1,34 +1,7 @@
 'use client';
+import {Headphones,MessageSquare,PackageSearch,RotateCcw,Users,Workflow,ShieldAlert,ExternalLink} from 'lucide-react';import Link from 'next/link';import {useEffect,useMemo,useState} from 'react';
+import AdminWorkspace from '@/components/admin-workspace';import {api} from '@/lib/api';import {apiMessage,dateTime,titleCase} from '@/lib/format';import {Card,Button,Loading,ErrorState,Badge} from '@/components/ui';
 
-import {Headphones, MessageSquare, PackageSearch, RotateCcw, Users, Workflow} from 'lucide-react';
-import Link from 'next/link';
-import AdminWorkspace from '@/components/admin-workspace';
-import {Card} from '@/components/ui';
-
-const playbooks = [
-  {title:'Customer 360',text:'Review profile, addresses, lifetime value and order history before responding.',href:'/customers',icon:Users},
-  {title:'Order resolution',text:'Inspect order status, payment, shipment, items and the status timeline.',href:'/orders',icon:PackageSearch},
-  {title:'Returns & refunds',text:'Review return requests and move eligible cases through the controlled workflow.',href:'/returns',icon:RotateCcw},
-];
-
-export default function Support(){
-  return <section className="content">
-    <div className="section-head" style={{alignItems:'flex-start',marginBottom:16}}>
-      <div><h1 style={{marginBottom:6}}>Support Command Center</h1><p className="muted">Production support workspace for customer, order, return and backend-operation resolution.</p></div>
-      <div className="toolbar"><span className="button primary"><Headphones size={14}/> Resolution desk</span><span className="button"><Workflow size={14}/> Core operations</span></div>
-    </div>
-    <div className="grid" style={{marginBottom:16}}>
-      <Card><div className="metric-label">Resolution workflow</div><div className="metric">360°</div><div className="metric-label">Customer → order → return context</div></Card>
-      <Card><div className="metric-label">Customer context</div><div className="metric"><Users size={24}/></div><div className="metric-label">Profile, addresses and lifetime value</div></Card>
-      <Card><div className="metric-label">Conversation handoff</div><div className="metric"><MessageSquare size={24}/></div><div className="metric-label">Operational actions stay in PriyasaCore</div></Card>
-    </div>
-    <div className="grid">
-      {playbooks.map(({title,text,href,icon:Icon})=><Card key={href}><div className="section-head"><div><h2>{title}</h2><p className="muted">{text}</p></div><Icon size={22}/></div><Link className="button primary" href={href}>Open workspace</Link></Card>)}
-    </div>
-    <Card>
-      <div className="section-head"><div><h2>Agent workflow</h2><p className="muted">Evidence-first sequence for every support case.</p></div></div>
-      <ol className="muted" style={{lineHeight:1.9,paddingLeft:22,marginBottom:0}}><li>Find the customer and confirm account context.</li><li>Open the related order and verify payment, fulfillment and delivery state.</li><li>Check return/refund state before promising an outcome.</li><li>Execute only supported PriyasaCore operations and preserve the audit trail.</li></ol>
-    </Card>
-    <div style={{marginTop:16}}><AdminWorkspace capabilityKey="support"/></div>
-  </section>
-}
+type Customer={id:string|number;phone:string;email?:string|null;first_name?:string|null;last_name?:string|null;status:string;order_count:number;lifetime_value:number|string;last_order_at?:string|null};
+const playbooks=[{title:'Customer 360',text:'Profile, addresses, lifetime value and order history.',href:'/customers',icon:Users},{title:'Order resolution',text:'Payment, fulfillment, delivery and timeline context.',href:'/orders',icon:PackageSearch},{title:'Returns & refunds',text:'Review controlled return and refund workflows.',href:'/returns',icon:RotateCcw}];
+export default function Support(){const [rows,setRows]=useState<Customer[]>([]),[q,setQ]=useState(''),[loading,setLoading]=useState(true),[error,setError]=useState('');async function load(){setLoading(true);setError('');try{const p=new URLSearchParams({per_page:'25'});if(q)p.set('search',q);const r=await api<any>(`/admin/customers?${p}`);const d=r.data?.data??r.data??[];setRows(Array.isArray(d)?d:[])}catch(e){setError(apiMessage(e,'Unable to load support customers'))}finally{setLoading(false)}}useEffect(()=>{const t=setTimeout(load,250);return()=>clearTimeout(t)},[q]);const stats=useMemo(()=>({blocked:rows.filter(x=>x.status==='blocked').length,orders:rows.reduce((n,x)=>n+Number(x.order_count||0),0)}),[rows]);return <section className="content"><div className="section-head" style={{alignItems:'flex-start',marginBottom:16}}><div><h1 style={{marginBottom:6}}>Support Command Center</h1><p className="muted">Evidence-first customer resolution across account, orders, returns and operations.</p></div><div className="toolbar"><span className="button primary"><Headphones size={14}/> Resolution desk</span><span className="button"><Workflow size={14}/> Core operations</span></div></div><div className="grid" style={{marginBottom:16}}><Card><div className="metric-label">Customers loaded</div><div className="metric">{rows.length}</div><div className="metric-label">Live Core search</div></Card><Card><div className="metric-label">Order context</div><div className="metric">{stats.orders}</div><div className="metric-label">Orders represented by loaded customers</div></Card><Card><div className="metric-label">Blocked accounts</div><div className="metric">{stats.blocked}</div><ShieldAlert size={18}/></Card></div><Card style={{marginBottom:16}}><div className="section-head"><div><h2>Customer lookup</h2><p className="muted">Start with the customer before taking an operational action.</p></div></div><input value={q} onChange={e=>setQ(e.target.value)} placeholder="Search name, phone or email…"/>{error&&<ErrorState error={error} onRetry={load}/>} {loading?<Loading/>:rows.length?<div className="table-wrap" style={{marginTop:12}}><table className="table"><thead><tr><th>Customer</th><th>Contact</th><th>Orders</th><th>Status</th><th>Last order</th><th/></tr></thead><tbody>{rows.map(c=><tr key={String(c.id)}><td><b>{[c.first_name,c.last_name].filter(Boolean).join(' ')||'Unnamed customer'}</b><div className="muted">#{c.id}</div></td><td>{c.phone}<div className="muted">{c.email||'No email'}</div></td><td>{c.order_count??0}</td><td><Badge>{titleCase(c.status)}</Badge></td><td>{dateTime(c.last_order_at||undefined)}</td><td><Link className="button" href={`/customers?search=${encodeURIComponent(c.phone)}`}><ExternalLink size={14}/> Customer 360</Link></td></tr>)}</tbody></table></div>:<div className="empty"><strong>No customer matches</strong><span>Search by phone, name or email.</span></div>}</Card><div className="grid" style={{marginBottom:16}}>{playbooks.map(({title,text,href,icon:Icon})=><Card key={href}><div className="section-head"><div><h2>{title}</h2><p className="muted">{text}</p></div><Icon size={22}/></div><Link className="button primary" href={href}>Open workspace</Link></Card>)}</div><Card><div className="section-head"><div><h2>Agent workflow</h2><p className="muted">Resolve with verified state before promising an outcome.</p></div><MessageSquare size={20}/></div><ol className="muted" style={{lineHeight:1.9,paddingLeft:22,marginBottom:0}}><li>Identify the customer and verify account state.</li><li>Open the related order and confirm payment and fulfillment state.</li><li>Check return/refund state and shipment exceptions.</li><li>Use only supported Core actions and preserve the audit trail.</li></ol></Card><div style={{marginTop:16}}><AdminWorkspace capabilityKey="support"/></div></section>}
