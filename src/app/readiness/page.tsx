@@ -1,0 +1,32 @@
+'use client';
+import Link from 'next/link';
+import {useEffect,useMemo,useState} from 'react';
+import {Activity,AlertTriangle,CheckCircle2,Database,ExternalLink,RefreshCw,Server,ShoppingBag} from 'lucide-react';
+import {api} from '@/lib/api';
+import {apiMessage,dateTime} from '@/lib/format';
+import {PageHeader,Card,Button,Badge,Loading,ErrorState} from '@/components/ui';
+
+type Check={name:string;status:'healthy'|'degraded'|'unavailable';detail:string;href?:string};
+type Health={redis?:string;database?:string;queue?:string;version?:string;environment?:string};
+function state(v:any):Check['status']{if(v===true||v==='ok'||v==='online'||v==='connected'||v==='healthy')return 'healthy';if(v===false||v==='error'||v==='offline'||v==='disconnected'||v==='unhealthy')return 'unavailable';return 'degraded'}
+function StateBadge({status}:{status:Check['status']}){return <Badge>{status==='healthy'?<CheckCircle2 size={13}/>:<AlertTriangle size={13}/>} {status}</Badge>}
+export default function Readiness(){
+ const [health,setHealth]=useState<Health|null>(null),[checks,setChecks]=useState<Check[]>([]),[loading,setLoading]=useState(true),[error,setError]=useState(''),[updated,setUpdated]=useState('');
+ async function load(){setLoading(true);setError('');try{
+  const results=await Promise.allSettled([api<Health>('/health'),api<any>('/admin/analytics?range=30d'),api<any>('/admin/orders?per_page=1'),api<any>('/admin/catalog/products?per_page=1'),api<any>('/admin/audit-logs?page=1&per_page=1')]);
+  const h=results[0].status==='fulfilled'?(results[0].value.data||null):null;setHealth(h);
+  const next:Check[]=[];
+  next.push({name:'PRIYASA API',status:results[0].status==='fulfilled'?'healthy':'unavailable',detail:results[0].status==='fulfilled'?`Health endpoint responded${h?.version?` · ${h.version}`:''}`:'Health endpoint unavailable'});
+  next.push({name:'Analytics',status:results[1].status==='fulfilled'?'healthy':'unavailable',detail:results[1].status==='fulfilled'?'Analytics feed responded':'Analytics feed unavailable',href:'/analytics'});
+  next.push({name:'Orders',status:results[2].status==='fulfilled'?'healthy':'unavailable',detail:results[2].status==='fulfilled'?'Admin order feed responded':'Order feed unavailable',href:'/orders'});
+  next.push({name:'Catalog',status:results[3].status==='fulfilled'?'healthy':'unavailable',detail:results[3].status==='fulfilled'?'Product catalog responded':'Product catalog unavailable',href:'/products'});
+  next.push({name:'Audit trail',status:results[4].status==='fulfilled'?'healthy':'unavailable',detail:results[4].status==='fulfilled'?'Operational audit feed responded':'Audit feed unavailable',href:'/audit'});
+  if(h?.redis!==undefined)next.push({name:'Redis',status:state(h.redis),detail:String(h.redis),href:'/operations'});
+  if(h?.database!==undefined)next.push({name:'Database',status:state(h.database),detail:String(h.database),href:'/operations'});
+  if(h?.queue!==undefined)next.push({name:'Queue',status:state(h.queue),detail:String(h.queue),href:'/operations'});
+  setChecks(next);setUpdated(new Date().toISOString());
+ }catch(e){setError(apiMessage(e,'Unable to evaluate platform readiness'))}finally{setLoading(false)}}
+ useEffect(()=>{load()},[]);
+ const healthy=useMemo(()=>checks.filter(x=>x.status==='healthy').length,[checks]);const unavailable=useMemo(()=>checks.filter(x=>x.status==='unavailable').length,[checks]);const score=checks.length?Math.round(healthy/checks.length*100):0;
+ return <section className="content"><PageHeader title="Production Readiness" description="Cross-domain health checks for the PriyasaCore-backed admin platform." action={<Button onClick={load} disabled={loading}><RefreshCw size={14}/> {loading?'Checking…':'Run checks'}</Button>}/>{error&&<ErrorState error={error} onRetry={load}/>} {loading?<Loading/>:<><div className="grid"><Card><div className="metric-label">Readiness score</div><div className="metric">{score}%</div><div className="metric-label">{healthy} healthy checks</div></Card><Card><div className="metric-label">Unavailable</div><div className="metric">{unavailable}</div><div className="metric-label">Requires investigation</div></Card><Card><div className="metric-label">Environment</div><div className="metric">{health?.environment||'—'}</div><div className="metric-label">Core health</div></Card><Card><div className="metric-label">Last checked</div><div className="metric" style={{fontSize:16}}>{dateTime(updated)}</div><div className="metric-label">Manual re-check available</div></Card></div><div className="section-grid"><Card><div className="card-title">Platform checks</div><div className="quick" style={{marginTop:14}}>{checks.map(c=><div key={c.name} style={{display:'flex',alignItems:'center',justifyContent:'space-between',gap:12}}><div style={{display:'flex',alignItems:'center',gap:9}}><Activity size={15}/><div><b>{c.name}</b><span className="muted">{c.detail}</span></div></div><div style={{display:'flex',alignItems:'center',gap:8}}><StateBadge status={c.status}/>{c.href&&<Link href={c.href} aria-label={`Open ${c.name}`}><ExternalLink size={14}/></Link>}</div></div>)}</div></Card><Card><div className="card-title">Operational shortcuts</div><div className="quick" style={{marginTop:14}}><Link href="/operations"><Server size={15}/><b>Operations</b><span>Audit events and exceptions</span></Link><Link href="/inventory"><Database size={15}/><b>Inventory</b><span>Stock and ledger controls</span></Link><Link href="/orders"><ShoppingBag size={15}/><b>Orders</b><span>Fulfillment and payment state</span></Link><Link href="/analytics"><Activity size={15}/><b>Analytics</b><span>Revenue and commerce KPIs</span></Link></div></Card></div><Card style={{marginTop:16} as any}><div className="card-title">Release gate</div><p className="muted" style={{marginTop:8}}>This dashboard checks connectivity and response availability only. A healthy check does not replace end-to-end checkout, payment, shipment, WhatsApp, FCM or browser testing.</p>{unavailable===0?<Badge><CheckCircle2 size={13}/> No unavailable Core surfaces observed</Badge>:<Badge><AlertTriangle size={13}/> {unavailable} surface{unavailable===1?'':'s'} unavailable — investigate before release</Badge>}</Card></>}</section>
+}
