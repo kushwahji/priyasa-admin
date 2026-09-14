@@ -1,0 +1,71 @@
+'use client';
+
+import {useEffect,useMemo,useState} from 'react';
+import {BarChart3,Bell,ChevronRight,Clock3,Mail,MessageCircle,Play,Plus,RefreshCw,Send,Smartphone,Target,Zap} from 'lucide-react';
+import {api} from '@/lib/api';
+import {apiMessage,dateTime} from '@/lib/format';
+import {Badge,Button,Card,DataToolbar,Empty,ErrorState,Loading,Modal,PageHeader} from '@/components/ui';
+
+type Channel='fcm'|'email'|'whatsapp'|'rcs';
+type Promotion={id:number|string;code:string;type:string;value:number|string;is_active:boolean;usage_count:number;usage_limit?:number|null;starts_at?:string|null;ends_at?:string|null};
+type Automation={id:number|string;name:string;event_key:string;enabled:boolean;email_enabled:boolean;whatsapp_enabled:boolean;fcm_enabled:boolean;delay_seconds?:number;updated_at?:string};
+
+type CampaignDraft={name:string;channel:Channel;audience:string;subject:string;message:string;cta:string;url:string;sendAt:string};
+const channelMeta:{key:Channel;label:string;icon:typeof Send;description:string}[]=[
+ {key:'fcm',label:'FCM Push',icon:Bell,description:'App and web push notifications'},
+ {key:'email',label:'Email',icon:Mail,description:'Promotional email campaigns'},
+ {key:'whatsapp',label:'WhatsApp',icon:MessageCircle,description:'Template and conversational messaging'},
+ {key:'rcs',label:'RCS',icon:Smartphone,description:'Rich business messaging'},
+];
+const emptyDraft:CampaignDraft={name:'',channel:'fcm',audience:'all_customers',subject:'',message:'',cta:'Shop now',url:'',sendAt:''};
+
+export default function Marketing(){
+ const [tab,setTab]=useState<'overview'|'campaigns'|'automation'|'promotions'>('overview');
+ const [promotions,setPromotions]=useState<Promotion[]>([]);
+ const [automations,setAutomations]=useState<Automation[]>([]);
+ const [loading,setLoading]=useState(true); const [error,setError]=useState('');
+ const [composer,setComposer]=useState(false); const [draft,setDraft]=useState<CampaignDraft>(emptyDraft); const [busy,setBusy]=useState(false);
+ const [q,setQ]=useState('');
+ async function load(){setLoading(true);setError('');try{
+   const [p,a]=await Promise.all([api<any>('/admin/promotions?per_page=100'),api<any>('/admin/automations?per_page=100')]);
+   setPromotions(p.data?.data||[]);setAutomations(a.data?.data||[]);
+ }catch(e){setError(apiMessage(e,'Unable to load marketing command center'))}finally{setLoading(false)}}
+ useEffect(()=>{load()},[]);
+ const activePromotions=promotions.filter(p=>p.is_active).length;
+ const activeAutomations=automations.filter(a=>a.enabled).length;
+ const enabledChannels=useMemo(()=>({fcm:automations.some(a=>a.enabled&&a.fcm_enabled),email:automations.some(a=>a.enabled&&a.email_enabled),whatsapp:automations.some(a=>a.enabled&&a.whatsapp_enabled),rcs:false}),[automations]);
+ const filteredPromotions=promotions.filter(p=>!q||p.code.toLowerCase().includes(q.toLowerCase()));
+ async function createCampaign(){
+   if(!draft.name.trim()||!draft.message.trim()){setError('Campaign name and message are required.');return}
+   setBusy(true);setError('');
+   try{
+     await api('/admin/campaigns',{method:'POST',body:JSON.stringify({name:draft.name.trim(),channel:draft.channel,audience:draft.audience,subject:draft.subject||null,message:draft.message,cta:draft.cta||null,url:draft.url||null,send_at:draft.sendAt||null,status:draft.sendAt?'scheduled':'draft'})});
+     setComposer(false);setDraft(emptyDraft);setTab('campaigns');
+   }catch(e){setError(apiMessage(e,'Campaign API is unavailable or rejected this campaign. No message was sent.'))}
+   finally{setBusy(false)}
+ }
+ return <section className="content">
+  <PageHeader title="Marketing & Promotions" description="One premium command center for campaigns, customer journeys, promotions and multi-channel automation." action={<div style={{display:'flex',gap:8}}><Button onClick={load} disabled={loading}><RefreshCw size={15}/> Refresh</Button><Button className="primary" onClick={()=>{setDraft(emptyDraft);setComposer(true)}}><Plus size={15}/> Create campaign</Button></div>}/>
+  {error&&<ErrorState error={error} onRetry={load}/>} 
+  <div className="stats-grid">
+   <Card><div className="metric-label">Active campaigns</div><div className="metric">—</div><div className="muted">Live campaign API</div></Card>
+   <Card><div className="metric-label">Active automations</div><div className="metric">{activeAutomations}</div><div className="muted">Event-driven journeys</div></Card>
+   <Card><div className="metric-label">Live promotions</div><div className="metric">{activePromotions}</div><div className="muted">Coupons at checkout</div></Card>
+   <Card><div className="metric-label">Channels ready</div><div className="metric">{Object.values(enabledChannels).filter(Boolean).length}/4</div><div className="muted">FCM · Email · WhatsApp · RCS</div></Card>
+  </div>
+  <Card>
+   <div style={{display:'flex',gap:8,flexWrap:'wrap',marginBottom:18}}>{[['overview','Overview'],['campaigns','Campaigns'],['automation','Automation'],['promotions','Promotions']].map(([k,l])=><Button key={k} className={tab===k?'primary':''} onClick={()=>setTab(k as typeof tab)}>{l}</Button>)}</div>
+   {tab==='overview'&&<>
+    <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fit,minmax(210px,1fr))',gap:12}}>{channelMeta.map(({key,label,icon:Icon,description})=><div key={key} style={{padding:18,border:'1px solid var(--border,#e6e6e6)',borderRadius:16,background:'var(--card,#fff)'}}><div style={{display:'flex',justifyContent:'space-between',alignItems:'center'}}><Icon size={21}/><Badge>{enabledChannels[key]?'Ready':'Configure'}</Badge></div><h3 style={{margin:'14px 0 5px'}}>{label}</h3><p className="muted" style={{margin:0}}>{description}</p></div>)}</div>
+    <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fit,minmax(260px,1fr))',gap:12,marginTop:16}}>
+      {[['Manual campaigns','Build once, select an audience, preview and schedule/send.','Create campaign'],['Event automation','Trigger messages from orders, customer lifecycle and commerce events.','Open automation'],['Promotion engine','Coupons and offer validity remain connected to checkout.','Manage promotions'],['Performance','Measure delivery, engagement, conversions and revenue attribution.','Open analytics']].map(([title,text,action],i)=><button key={title} onClick={()=>i===0?setComposer(true):i===1?setTab('automation'):i===2?setTab('promotions'):undefined} style={{textAlign:'left',padding:18,border:'1px solid var(--border,#e6e6e6)',borderRadius:16,background:'transparent',cursor:i===3?'default':'pointer'}}><div style={{display:'flex',justifyContent:'space-between'}}><strong>{title}</strong><ChevronRight size={17}/></div><p className="muted" style={{margin:'8px 0 14px'}}>{text}</p><span className="muted">{action}</span></button>)}
+    </div>
+   </>}
+   {tab==='campaigns'&&<div><div style={{display:'flex',justifyContent:'space-between',alignItems:'center',gap:12,marginBottom:14}}><div><h2 style={{margin:0}}>Campaign workspace</h2><p className="muted">Draft, schedule and send through the canonical campaign API.</p></div><Button className="primary" onClick={()=>setComposer(true)}><Send size={15}/> New campaign</Button></div><div className="empty"><strong>Campaign delivery is API-backed</strong><span>Use the composer to create a campaign. Delivery must be accepted by PriyasaCore; this UI never pretends a message was sent when the API rejects it.</span></div></div>}
+   {tab==='automation'&&<><DataToolbar value={q} onChange={setQ} placeholder="Search automation or event…"/><div className="table-wrap"><table className="table"><thead><tr><th>Journey</th><th>Trigger</th><th>Channels</th><th>Delay</th><th>Status</th><th>Updated</th></tr></thead><tbody>{automations.filter(a=>!q||`${a.name} ${a.event_key}`.toLowerCase().includes(q.toLowerCase())).map(a=><tr key={String(a.id)}><td><b>{a.name}</b></td><td><code>{a.event_key}</code></td><td>{[a.fcm_enabled&&'FCM',a.email_enabled&&'Email',a.whatsapp_enabled&&'WhatsApp'].filter(Boolean).join(' · ')||'None'}</td><td>{a.delay_seconds?`${Math.round(a.delay_seconds/60)} min`:'Immediate'}</td><td><Badge>{a.enabled?'Enabled':'Paused'}</Badge></td><td>{dateTime(a.updated_at)}</td></tr>)}</tbody></table></div>{!automations.length&&!loading&&<Empty title="No automation rules" text="Create or enable lifecycle automation in Automation & AI."/>}</>}
+   {tab==='promotions'&&<><DataToolbar value={q} onChange={setQ} placeholder="Search promotion code…"/><div className="table-wrap"><table className="table"><thead><tr><th>Code</th><th>Offer</th><th>Usage</th><th>Validity</th><th>Status</th></tr></thead><tbody>{filteredPromotions.map(p=><tr key={String(p.id)}><td><b>{p.code}</b></td><td>{p.type==='percentage'?`${p.value}%`:`₹${p.value}`}</td><td>{p.usage_count}{p.usage_limit!=null?` / ${p.usage_limit}`:' / ∞'}</td><td>{p.starts_at||p.ends_at?`${dateTime(p.starts_at||undefined)}${p.ends_at?` → ${dateTime(p.ends_at)}`:''}`:'Always'}</td><td><Badge>{p.is_active?'Active':'Inactive'}</Badge></td></tr>)}</tbody></table></div>{!filteredPromotions.length&&!loading&&<Empty title="No promotions" text="Create coupons in Promotions to connect offers to campaigns."/>}</>}
+  </Card>
+  {loading&&!error&&<Loading/>}
+  {composer&&<Modal title="Create marketing campaign" onClose={()=>!busy&&setComposer(false)}><div className="form-stack"><div style={{display:'grid',gridTemplateColumns:'repeat(auto-fit,minmax(180px,1fr))',gap:10}}>{channelMeta.map(({key,label,icon:Icon})=><button key={key} type="button" onClick={()=>setDraft({...draft,channel:key})} style={{padding:13,textAlign:'left',border:'1px solid',borderColor:draft.channel===key?'currentColor':'var(--border,#e6e6e6)',borderRadius:12,background:'transparent',cursor:'pointer'}}><Icon size={17}/><div style={{fontWeight:700,marginTop:6}}>{label}</div></button>)}</div><div className="form-grid"><label>Campaign name<input value={draft.name} onChange={e=>setDraft({...draft,name:e.target.value})} placeholder="Festive sale — winback"/></label><label>Audience<select value={draft.audience} onChange={e=>setDraft({...draft,audience:e.target.value})}><option value="all_customers">All customers</option><option value="new_customers">New customers</option><option value="repeat_customers">Repeat customers</option><option value="inactive_30d">Inactive 30 days</option><option value="high_value">High value customers</option></select></label>{draft.channel==='email'&&<label>Email subject<input value={draft.subject} onChange={e=>setDraft({...draft,subject:e.target.value})} placeholder="Your exclusive Priyasa offer"/></label>}<label>CTA label<input value={draft.cta} onChange={e=>setDraft({...draft,cta:e.target.value})}/></label><label>Destination URL<input value={draft.url} onChange={e=>setDraft({...draft,url:e.target.value})} placeholder="https://…"/></label><label>Schedule<input type="datetime-local" value={draft.sendAt} onChange={e=>setDraft({...draft,sendAt:e.target.value})}/></label></div><label>Message<textarea rows={7} value={draft.message} onChange={e=>setDraft({...draft,message:e.target.value})} placeholder="Hi {{first_name}}, discover your new Priyasa offer…"/></label><div style={{display:'flex',gap:8,justifyContent:'flex-end'}}><Button onClick={()=>setComposer(false)} disabled={busy}>Cancel</Button><Button className="primary" onClick={createCampaign} disabled={busy}>{busy?'Saving…':draft.sendAt?<><Clock3 size={15}/> Schedule campaign</>:<><Play size={15}/> Save campaign</>}</Button></div></div></Modal>}
+ </section>
+}
