@@ -1,0 +1,19 @@
+'use client';
+
+import {useEffect,useState} from 'react';
+import Link from 'next/link';
+import {Eye,GitBranch,RefreshCw,Save,Upload} from 'lucide-react';
+import {api} from '@/lib/api';
+import {apiMessage,dateTime} from '@/lib/format';
+import {Badge,Button,Card,ErrorState,Loading,PageHeader} from '@/components/ui';
+
+type Version={id:number|string;version?:number;page_key?:string;status?:string;created_at?:string;published_at?:string;created_by?:number|string};
+export default function CmsVersions(){
+ const[rows,setRows]=useState<Version[]>([]),[loading,setLoading]=useState(true),[busy,setBusy]=useState(false),[error,setError]=useState(''),[message,setMessage]=useState(''),[preview,setPreview]=useState<any>(null);
+ async function load(){setLoading(true);setError('');try{const r=await api<any>('/admin/cms/versions');const raw=r.data;setRows(Array.isArray(raw)?raw:Array.isArray(raw?.data)?raw.data:[])}catch(e){setError(apiMessage(e,'Unable to load CMS versions.'))}finally{setLoading(false)}}
+ useEffect(()=>{void load()},[]);
+ async function draft(){setBusy(true);setError('');try{const r=await api<any>('/admin/cms/drafts',{method:'POST',body:'{}'});setMessage(r.message||`Draft version ${r.data?.version??''} saved.`);await load()}catch(e){setError(apiMessage(e,'Unable to save draft.'))}finally{setBusy(false)}}
+ async function publish(v:Version){if(!window.confirm(`Publish version ${v.version??v.id} to the Priyasa Store homepage?`))return;setBusy(true);setError('');try{const r=await api(`/admin/cms/versions/${v.id}/publish`,{method:'POST',body:'{}'});setMessage(r.message||'Homepage version published.');await load()}catch(e){setError(apiMessage(e,'Unable to publish version.'))}finally{setBusy(false)}}
+ async function showPreview(){setBusy(true);setError('');try{const r=await api<any>('/admin/cms/preview');setPreview(r.data||r)}catch(e){setError(apiMessage(e,'Unable to load CMS preview.'))}finally{setBusy(false)}}
+ return <section className="content"><PageHeader title="CMS Versions & Publishing" description="Save a controlled homepage draft, inspect the version history and explicitly publish a version to production." action={<div className="form-actions"><Link href="/cms/home-builder" className="btn">Home Builder</Link><Button onClick={load} disabled={loading||busy}><RefreshCw size={14}/> Refresh</Button><Button onClick={showPreview} disabled={busy}><Eye size={14}/> Preview API</Button><Button className="primary" onClick={draft} disabled={busy}><Save size={14}/> Save draft</Button></div>}/>{message&&<div className="form-success">{message}</div>}{error&&<ErrorState error={error} onRetry={load}/>} {loading?<Loading/>:<Card><div className="table-wrap"><table className="table"><thead><tr><th>Version</th><th>Page</th><th>Status</th><th>Created</th><th>Published</th><th/></tr></thead><tbody>{rows.map(v=><tr key={String(v.id)}><td><b>v{v.version??v.id}</b></td><td>{v.page_key||'home'}</td><td><Badge>{v.status||'draft'}</Badge></td><td>{dateTime(v.created_at)}</td><td>{dateTime(v.published_at)}</td><td>{String(v.status||'').toLowerCase()==='published'?<Badge><Upload size={12}/> Live</Badge>:<Button onClick={()=>publish(v)} disabled={busy}><Upload size={14}/> Publish</Button>}</td></tr>)}</tbody></table></div>{!rows.length&&<div className="empty">No CMS versions yet. Save a draft after making homepage changes.</div>}</Card>}{preview&&<div className="modal-backdrop" onMouseDown={e=>e.target===e.currentTarget&&setPreview(null)}><div className="modal"><div className="modal-head"><h2>CMS Preview API</h2><button onClick={()=>setPreview(null)}>×</button></div><div className="muted" style={{marginBottom:10}}><GitBranch size={13}/> This is the backend preview payload, not a fake local preview.</div><pre style={{whiteSpace:'pre-wrap',background:'#111',color:'#eee',padding:14,borderRadius:10,maxHeight:500,overflow:'auto',fontSize:11}}>{JSON.stringify(preview,null,2)}</pre></div></div>}</section>;
+}
