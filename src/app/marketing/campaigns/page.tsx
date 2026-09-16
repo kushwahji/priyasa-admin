@@ -1,0 +1,76 @@
+'use client';
+
+import { useEffect, useMemo, useState } from 'react';
+import { BarChart3, Megaphone, Pause, Play, Plus, Send, X } from 'lucide-react';
+import { api } from '@/lib/api';
+import { apiMessage } from '@/lib/format';
+import { Badge, Button, Card, ErrorState, Loading, Modal, PageHeader } from '@/components/ui';
+
+type Channel = { channel: 'push' | 'email' | 'whatsapp' | 'rcs'; template_key: string };
+type Campaign = { campaign_id: string; name: string; status: string; audience?: any; channels?: Channel[]; schedule?: any; frequency_cap?: any; quiet_hours?: any; goal?: any };
+type Stats = { queued:number; sent:number; delivered:number; opened:number; clicked:number; failed:number; converted:number; unsubscribed:number };
+
+const blank = (): Campaign => ({
+  campaign_id: 'new', name: '', status: 'draft', audience: { filters: [] },
+  channels: [{ channel: 'push', template_key: 'campaign_default' }],
+  schedule: {}, frequency_cap: { per_customer_per_24h: 1 }, quiet_hours: { start: '22:00', end: '08:00' },
+  goal: { type: 'order', window_hours: 72 },
+});
+
+export default function CampaignStudio() {
+  const [items, setItems] = useState<Campaign[]>([]), [loading, setLoading] = useState(true), [busy, setBusy] = useState(false);
+  const [error, setError] = useState(''), [message, setMessage] = useState(''), [editing, setEditing] = useState<Campaign | null>(null), [stats, setStats] = useState<Stats | null>(null);
+  const [search, setSearch] = useState('');
+
+  async function load() { setLoading(true); setError(''); try { const r = await api<any>(`/admin/marketing/campaigns?per_page=50${search ? `&search=${encodeURIComponent(search)}` : ''}`); const d=r.data; setItems(Array.isArray(d) ? d : (d?.data || [])); } catch(e) { setError(apiMessage(e, 'Unable to load campaigns.')); } finally { setLoading(false); } }
+  useEffect(() => { void load(); }, [search]);
+
+  function edit(c: Campaign) { setEditing(JSON.parse(JSON.stringify(c))); }
+  function update(p: Partial<Campaign>) { setEditing(v => v ? { ...v, ...p } : v); }
+  function channels(): Channel[] { return editing?.channels || []; }
+  function setChannel(i:number, p:Partial<Channel>) { if (!editing) return; const next=[...channels()]; next[i]={...next[i],...p}; update({channels:next}); }
+  function addChannel() { update({channels:[...channels(), {channel:'whatsapp',template_key:'campaign_default'}]}); }
+  function removeChannel(i:number) { update({channels:channels().filter((_,n)=>n!==i)}); }
+
+  async function save() {
+    if (!editing || !editing.name.trim() || !channels().length) return setError('Campaign name and at least one channel are required.');
+    setBusy(true); setError(''); try {
+      const body={name:editing.name.trim(),status:editing.status,audience:editing.audience||{},channels:channels(),schedule:editing.schedule||{},frequency_cap:editing.frequency_cap||{},quiet_hours:editing.quiet_hours||{},goal:editing.goal||{}};
+      const r=editing.campaign_id==='new' ? await api('/admin/marketing/campaigns',{method:'POST',body:JSON.stringify(body)}) : await api(`/admin/marketing/campaigns/${editing.campaign_id}`,{method:'PUT',body:JSON.stringify(body)});
+      setMessage(r.message||'Campaign saved.'); setEditing(null); await load();
+    } catch(e) { setError(apiMessage(e,'Unable to save campaign.')); } finally { setBusy(false); }
+  }
+
+  async function lifecycle(c:Campaign, action:'schedule'|'pause'|'resume'|'cancel') {
+    setBusy(true); setError(''); try {
+      const body=action==='schedule' ? {send_at:c.schedule?.send_at,timezone:c.schedule?.timezone} : undefined;
+      if (action==='schedule' && !body?.send_at) return setError('Set a scheduled send time first.');
+      await api(`/admin/marketing/campaigns/${c.campaign_id}/${action}`,{method:'POST',body:body?JSON.stringify(body):undefined});
+      setMessage(`Campaign ${action}d.`); await load();
+    } catch(e) { setError(apiMessage(e,'Campaign action failed.')); } finally { setBusy(false); }
+  }
+
+  async function showStats(c:Campaign) { try { const r=await api<any>(`/admin/marketing/campaigns/${c.campaign_id}/stats`); setStats(r.data||null); } catch(e) { setError(apiMessage(e,'Unable to load campaign stats.')); } }
+  const activeCount=useMemo(()=>items.filter(x=>['scheduled','running'].includes(x.status)).length,[items]);
+
+  return <section className="content">
+    <PageHeader title="Marketing Campaign Studio" description="Coordinate festive campaigns across push, WhatsApp, email and RCS with audience, schedule, caps and delivery analytics." action={<Button className="primary" onClick={()=>edit(blank())}><Plus size={15}/> New campaign</Button>} />
+    <div className="kpi-grid"><Card><b>{items.length}</b><span>Total campaigns</span></Card><Card><b>{activeCount}</b><span>Scheduled / running</span></Card><Card><b>{items.filter(x=>x.status==='draft').length}</b><span>Drafts</span></Card></div>
+    <div className="toolbar"><input placeholder="Search campaigns…" value={search} onChange={e=>setSearch(e.target.value)} /></div>
+    {message&&<div className="form-success">{message}</div>}{error&&<ErrorState error={error} onRetry={load}/>} {loading?<Loading/>:<div className="grid-cards">{items.map(c=><Card key={c.campaign_id}>
+      <div className="integration-card-head"><div className="module-icon"><Megaphone size={20}/></div><Badge>{c.status}</Badge></div><h2>{c.name}</h2><p><code>{c.campaign_id}</code></p>
+      <div className="quick"><div><b>Channels</b><span>{(c.channels||[]).map(x=>x.channel).join(', ')||'—'}</span></div><div><b>Audience</b><span>{c.audience?.segment_id||'All eligible'}</span></div><div><b>Send</b><span>{c.schedule?.send_at||'Not scheduled'}</span></div></div>
+      <div className="form-actions" style={{marginTop:14}}><Button onClick={()=>edit(c)}>Edit</Button><Button onClick={()=>showStats(c)}><BarChart3 size={14}/> Stats</Button>{c.status==='draft'&&<Button className="primary" onClick={()=>lifecycle(c,'schedule')} disabled={busy}><Send size={14}/> Schedule</Button>}{['scheduled','running'].includes(c.status)&&<Button onClick={()=>lifecycle(c,'pause')} disabled={busy}><Pause size={14}/> Pause</Button>}{c.status==='paused'&&<Button className="primary" onClick={()=>lifecycle(c,'resume')} disabled={busy}><Play size={14}/> Resume</Button>}</div>
+    </Card>)}{!items.length&&<Card><div className="empty">No marketing campaigns yet.</div></Card>}</div>}
+
+    {editing&&<Modal title={editing.campaign_id==='new'?'Create campaign':'Edit campaign'} onClose={()=>!busy&&setEditing(null)}>
+      <div className="section-grid"><label className="form">Campaign name<input value={editing.name} onChange={e=>update({name:e.target.value})} placeholder="Navratri Celebration 2026"/></label><label className="form">Status<select value={editing.status} onChange={e=>update({status:e.target.value})}><option>draft</option><option>scheduled</option><option>running</option><option>paused</option></select></label></div>
+      <label className="form">Audience segment ID<input value={editing.audience?.segment_id||''} onChange={e=>update({audience:{...(editing.audience||{}),segment_id:e.target.value||undefined}})} placeholder="Optional segment"/></label>
+      <div className="form"><b>Channels</b>{channels().map((ch,i)=><div className="section-grid" key={i}><select value={ch.channel} onChange={e=>setChannel(i,{channel:e.target.value as Channel['channel']})}><option>push</option><option>whatsapp</option><option>email</option><option>rcs</option></select><input value={ch.template_key} onChange={e=>setChannel(i,{template_key:e.target.value})}/><Button onClick={()=>removeChannel(i)}><X size={14}/></Button></div>)}<Button onClick={addChannel}><Plus size={14}/> Add channel</Button></div>
+      <div className="section-grid"><label className="form">Scheduled send<input type="datetime-local" value={editing.schedule?.send_at||''} onChange={e=>update({schedule:{...(editing.schedule||{}),send_at:e.target.value}})}/></label><label className="form">Timezone<input value={editing.schedule?.timezone||'Asia/Kolkata'} onChange={e=>update({schedule:{...(editing.schedule||{}),timezone:e.target.value}})}/></label></div>
+      <div className="section-grid"><label className="form">24h customer cap<input type="number" min="1" max="20" value={editing.frequency_cap?.per_customer_per_24h||1} onChange={e=>update({frequency_cap:{per_customer_per_24h:Number(e.target.value)}})}/></label><label className="form">Goal<select value={editing.goal?.type||'order'} onChange={e=>update({goal:{...(editing.goal||{}),type:e.target.value}})}><option>order</option><option>revenue</option><option>click</option></select></label></div>
+      <div className="form-actions"><Button onClick={()=>setEditing(null)} disabled={busy}>Cancel</Button><Button className="primary" onClick={save} disabled={busy}>{busy?'Saving…':'Save campaign'}</Button></div>
+    </Modal>}
+    {stats&&<Modal title="Campaign performance" onClose={()=>setStats(null)}><div className="kpi-grid">{Object.entries(stats).map(([k,v])=><Card key={k}><b>{v}</b><span>{k}</span></Card>)}</div></Modal>}
+  </section>;
+}
