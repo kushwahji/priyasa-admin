@@ -34,9 +34,9 @@ test.describe('Priyasa Admin production smoke',()=>{
 
  test('authenticated finance workspace is discoverable from the shell',async({page})=>{
   await page.addInitScript(()=>localStorage.setItem('priyasa_admin_token','e2e-test-token'));
-  await page.route('**/api/proxy/docs/openapi.routes.json',async route=>route.fulfill({status:200,contentType:'application/json',body:JSON.stringify({data:[{method:'GET',uri:'api/v1/admin/finance/reports/tax',action:'FinancialReportsController@tax'}]})}));
+  await page.route('**/api/proxy/admin/payments/transactions?per_page=100',async route=>route.fulfill({status:200,contentType:'application/json',body:JSON.stringify({data:[]})}));
   await page.goto('/finance');
-  await expect(page.getByRole('heading',{name:/analytics & finance/i})).toBeVisible();
-  await expect(page.getByText('finance/reports/tax',{exact:false})).toBeVisible();
+  await expect(page.getByRole('heading',{name:/finance command center/i})).toBeVisible();
+  await expect(page.getByText(/no payment transactions/i)).toBeVisible();
  });
 });
