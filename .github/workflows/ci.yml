@@ -4,10 +4,12 @@ on:
   push:
     branches:
       - main
+      - feature/staging
       - priyasacore-e2e-admin
   pull_request:
     branches:
       - main
+      - feature/staging
       - priyasacore-e2e-admin
 
 jobs:
