@@ -21,13 +21,12 @@ export default function ControlCenter(){
  async function load(){
   setLoading(true);setError('');
   try{
-   const [o,ord,inv,op]=await Promise.all([
-    api<Overview>(API_ROUTES.controlCenter.overview),
-    api<Orders>(API_ROUTES.controlCenter.orders+'?per_page=12'),
-    api<Inventory>(API_ROUTES.controlCenter.inventory),
-    api<Ops>(API_ROUTES.controlCenter.operations),
-   ]);
-   setOverview(o.data||null);setOrders(ord.data||null);setInventory(inv.data||null);setOps(op.data||null);
+   const r=await api<any>(API_ROUTES.controlCenter.dashboard+'?per_page=12');
+   const d=r.data||{};
+   setOverview(d.overview||null);
+   setOrders(d.orders||null);
+   setInventory(d.inventory||null);
+   setOps(d.operations||null);
   }catch(e){setError(e instanceof Error?e.message:'Unable to load control center')}
   finally{setLoading(false)}
  }
