@@ -1,0 +1,5 @@
+'use client';
+import {useEffect,useState} from 'react';
+import {api} from '@/lib/api';
+import {PageHeader,Card,Button,Loading,ErrorState,Empty} from '@/components/ui';
+export default function Page(){const [data,setData]=useState<any>(null);const [loading,setLoading]=useState(true);const [error,setError]=useState('');async function load(){setLoading(true);setError('');try{const r=await api<any>('/admin/warehouses');setData(r.data??r)}catch(e){setError(e instanceof Error?e.message:'Unable to load warehouse data')}finally{setLoading(false)}}useEffect(()=>{load()},[]);return <section className="content"><PageHeader title="Warehouse" description="Warehouse-level stock visibility and controlled adjustments." action={<Button onClick={load} disabled={loading}>Refresh</Button>}/>{error&&<ErrorState error={error} onRetry={load}/>} {loading?<Loading/>:<Card><div className="card-title">Core operations</div>{data?<pre style={{whiteSpace:'pre-wrap',overflow:'auto',fontSize:12}}>{JSON.stringify(data,null,2)}</pre>:<Empty title="No data" text="PriyasaCore returned no records for this workspace."/>}</Card>}</section>}
