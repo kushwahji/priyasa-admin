@@ -30,7 +30,7 @@ export default function WhatsApp(){
  useEffect(()=>{load()},[]);
  useEffect(()=>{
   if(!selected){setMessages([]);return}
-  api<Message[]>(`/admin/whatsapp/conversations/${encodeURIComponent(selected)}/messages`).then(r=>setMessages(r.data||[])).catch(e=>setError(apiMessage(e,'Unable to load conversation')))
+  api<Message[]>(API_ROUTES.whatsapp.conversation(selected)).then(r=>setMessages(r.data||[])).catch(e=>setError(apiMessage(e,'Unable to load conversation')))
  },[selected]);
  async function reply(){
   if(!selected||!text.trim())return;
