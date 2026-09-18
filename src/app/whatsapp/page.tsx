@@ -38,7 +38,7 @@ export default function WhatsApp(){
   try{
    await api(API_ROUTES.whatsapp.reply(selected),{method:'POST',headers:{'Idempotency-Key':crypto.randomUUID()},body:JSON.stringify({message:text.trim()})});
    setText('');
-   const r=await api<Message[]>(`/admin/whatsapp/conversations/${encodeURIComponent(selected)}/messages`);
+   const r=await api<Message[]>(API_ROUTES.whatsapp.conversation(selected));
    setMessages(r.data||[]);
    await load();
   }catch(e){setError(apiMessage(e,'WhatsApp reply failed'))}finally{setBusy(false)}
