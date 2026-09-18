@@ -1,7 +1,7 @@
 'use client';
 import Link from 'next/link';
 import {ReactNode,useEffect,useState} from 'react';
-import {Search,ChevronLeft,ChevronRight,LogOut,Menu,X,RefreshCw,Command,ChevronDown} from 'lucide-react';
+import {Search,ChevronLeft,ChevronRight,LogOut,Menu,X,RefreshCw,Command} from 'lucide-react';
 import {usePathname,useRouter} from 'next/navigation';
 import {api} from '@/lib/api';
 export function Badge({children}:{children:ReactNode}){return <span className="badge">{children}</span>}
