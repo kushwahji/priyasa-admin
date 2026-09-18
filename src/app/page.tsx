@@ -1,19 +1,20 @@
 'use client';
+
 import Link from 'next/link';
 import {useEffect,useMemo,useState} from 'react';
-import {RefreshCw,PackageSearch,RotateCcw,CreditCard,Users,ShoppingBag,Boxes,MonitorCog,ArrowRight,Layers,Tag,Truck,MessageSquare,ShieldCheck} from 'lucide-react';
+import {RefreshCw,PackageSearch,RotateCcw,CreditCard,Users,ShoppingBag,Boxes,MonitorCog,ArrowRight,Tag,Truck,ShieldCheck} from 'lucide-react';
 import {api} from '@/lib/api';
 import {Order,Paginated,Product} from '@/lib/types';
 import {PageHeader,Card,Loading,ErrorState,Badge,Button} from '@/components/ui';
 
 type Analytics={orders:number;sales:number;aov:number;customers:number;returns:number;payment_failures:number;low_stock:number;series?:Array<{date:string;orders:number;sales:number}>};
-const money=(n:number)=>`₹${Number(n||0).toLocaleString('en-IN',{maximumFractionDigits:2})`;
+const money=(n:number)=>`₹${Number(n||0).toLocaleString('en-IN',{maximumFractionDigits:2})}`;
 const workspaces=[
  ['Catalog','Products, variants, media, categories and collections','/products',PackageSearch],
  ['Orders & Fulfilment','Orders, payments, refunds, shipping and returns','/orders',ShoppingBag],
  ['Inventory','Stock, warehouses, adjustments and movements','/inventory',Boxes],
  ['Customers','Customer records and Customer 360','/customers',Users],
- ['Growth','Promotions, marketing, ads and merchandising','/marketing',Tag],
+ ['Growth','Promotions, marketing and merchandising','/marketing',Tag],
  ['Storefront','CMS, themes and storefront configuration','/cms',MonitorCog],
  ['Operations','Shipping, WhatsApp, automation and support','/shipping',Truck],
  ['System','Settings, RBAC, integrations and audit','/settings',ShieldCheck],
