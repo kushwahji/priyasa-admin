@@ -31,7 +31,7 @@ export const API_ROUTES = {
     products:'/admin/control-center/products',
     inventory:'/admin/control-center/inventory',
     operations:'/admin/control-center/operations',
-    bulkPrice:'/admin/control-center/bulk/price',
+    bulkPrice:'/admin/control-center/bulk-price',
     bulkJob:(id:string|number)=>`/admin/control-center/bulk/${id}`,
   },
 
@@ -191,7 +191,7 @@ export const API_ROUTES = {
     daily:'/admin/analytics/daily',
     products:'/admin/analytics/products',
     rebuild:'/admin/analytics/rebuild',
-    rebuildDaily:'/admin/analytics/rebuild-daily',
+    rebuildDaily:'/admin/analytics/rebuild',
   },
 
   financial:{
@@ -301,7 +301,7 @@ export const API_ROUTES = {
     metrics:'/admin/ops/metrics',
     audit:'/admin/ops/audit',
     inventoryReservations:'/admin/ops/inventory-reservations',
-    expireReservations:'/admin/ops/inventory-reservations/expire',
+    expireReservations:'/admin/ops/inventory-reservations/expire-reservations',
   },
 
   security:{
