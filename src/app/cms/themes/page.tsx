@@ -7,13 +7,11 @@ import {API_ROUTES} from '@/lib/api-contract';
 import {Badge,Button,Card,ErrorState,Loading,Modal,PageHeader} from '@/components/ui';
 
 type Theme={id:number;key:string;name:string;type?:string;status?:string;version?:number;priority?:number;is_active:boolean;starts_at?:string|null;ends_at?:string|null;tokens?:Record<string,unknown>;assets?:Record<string,unknown>;decorations?:Record<string,unknown>;features?:Record<string,unknown>};
-type Envelope={data:Theme[]};
-
 const empty={key:'',name:'',type:'storefront',status:'draft',priority:0,tokens:'{}',assets:'{}',decorations:'{}',features:'{}',starts_at:'',ends_at:''};
 
 export default function Themes(){
  const [themes,setThemes]=useState<Theme[]>([]),[open,setOpen]=useState(false),[editing,setEditing]=useState<Theme|null>(null),[form,setForm]=useState({...empty}),[busy,setBusy]=useState(false),[error,setError]=useState('');
- async function load(){setError('');try{const r=await api<Envelope>(API_ROUTES.cms.themes);setThemes(r.data||[])}catch(e){setError(e instanceof Error?e.message:'Unable to load themes')}}
+ async function load(){setError('');try{const r=await api<Theme[]>(API_ROUTES.cms.themes);setThemes(r.data||[])}catch(e){setError(e instanceof Error?e.message:'Unable to load themes')}}
  useEffect(()=>{load()},[]);
  function edit(t?:Theme){setEditing(t||null);setForm(t?{key:t.key,name:t.name,type:t.type||'storefront',status:t.status||'draft',priority:t.priority||0,tokens:JSON.stringify(t.tokens||{},null,2),assets:JSON.stringify(t.assets||{},null,2),decorations:JSON.stringify(t.decorations||{},null,2),features:JSON.stringify(t.features||{},null,2),starts_at:t.starts_at||'',ends_at:t.ends_at||''}:{...empty});setOpen(true)}
  async function save(){setBusy(true);setError('');try{const json=(v:string)=>{try{return JSON.parse(v||'{}')}catch{throw new Error('Theme JSON fields must be valid JSON.')}};const body={key:form.key.trim(),name:form.name.trim(),type:form.type,status:form.status,priority:Number(form.priority),tokens:json(form.tokens),assets:json(form.assets),decorations:json(form.decorations),features:json(form.features),starts_at:form.starts_at||null,ends_at:form.ends_at||null};await api(editing?API_ROUTES.cms.theme(editing.id):API_ROUTES.cms.themes,{method:editing?'PUT':'POST',body:JSON.stringify(body)});setOpen(false);await load()}catch(e){setError(e instanceof Error?e.message:'Unable to save theme')}finally{setBusy(false)}}
