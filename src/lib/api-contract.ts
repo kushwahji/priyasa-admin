@@ -4,44 +4,329 @@ export type Pagination = { current_page:number; last_page:number; total:number; 
 export type ApiEnvelope<T> = { success?:boolean; data?:T; message?:string; errors?:Record<string,string[]> };
 export type AdminList<T> = Pagination & { data:T[] };
 
-/** Canonical PriyasaCore /api/v1 admin contract. Keep every admin UI call behind this map. */
+/**
+ * Canonical PriyasaCore /api/v1 admin contract.
+ *
+ * These paths intentionally mirror the route files loaded by
+ * PriyasaCoreServiceProvider. Do not point the browser at provider APIs or
+ * legacy /v2 aliases; PriyasaCore is the commerce source of truth.
+ */
 export const API_ROUTES = {
- health:'/health', ready:'/ready',
- auth:{sendOtp:'/admin/auth/send-otp',verifyOtp:'/admin/auth/verify-otp',me:'/admin/me',logout:'/admin/auth/logout'},
+  health:'/health',
+  ready:'/ready',
 
- dashboard:'/admin/analytics',
- controlCenter:{overview:'/admin/control-center/overview',orders:'/admin/control-center/orders',inventory:'/admin/control-center/inventory',operations:'/admin/control-center/operations'},
- actions:{orderTransition:(id:string|number)=>`/admin/actions/orders/${id}/transition`,inventoryAdjust:'/admin/actions/inventory/adjust',transfer:'/admin/actions/inventory/transfer',fulfillment:(id:string|number)=>`/admin/actions/fulfillment/allocations/${id}`,return:(id:string|number)=>`/admin/actions/returns/${id}`,refund:(id:string|number)=>`/admin/actions/refunds/${id}`},
+  auth:{
+    sendOtp:'/admin/auth/send-otp',
+    verifyOtp:'/admin/auth/verify-otp',
+    me:'/admin/me',
+    logout:'/admin/auth/logout',
+  },
 
- catalog:{products:'/admin/catalog/products',product:(id:string|number)=>`/admin/catalog/products/${id}`,variants:(id:string|number)=>`/admin/catalog/products/${id}/variants`,variant:(p:string|number,v:string|number)=>`/admin/catalog/products/${p}/variants/${v}`,generateVariants:(id:string|number)=>`/admin/catalog/products/${id}/variants/generate`,variantOptions:(p:string|number,v:string|number)=>`/admin/catalog/products/${p}/variants/${v}/attribute-options`,attributes:'/admin/catalog/attributes',attribute:(id:string|number)=>`/admin/catalog/attributes/${id}`,attributeOptions:(id:string|number)=>`/admin/catalog/attributes/${id}/options`,categories:'/admin/catalog/categories',category:(id:string|number)=>`/admin/catalog/categories/${id}`,media:(id:string|number)=>`/admin/catalog/products/${id}/media`,bulkPrice:'/admin/catalog/products/bulk-price'},
+  dashboard:'/admin/analytics',
+  controlCenter:{
+    overview:'/admin/control-center/overview',
+    dashboard:'/admin/control-center/dashboard',
+    orders:'/admin/control-center/orders',
+    customers:'/admin/control-center/customers',
+    products:'/admin/control-center/products',
+    inventory:'/admin/control-center/inventory',
+    operations:'/admin/control-center/operations',
+    bulkPrice:'/admin/control-center/bulk/price',
+    bulkJob:(id:string|number)=>`/admin/control-center/bulk/${id}`,
+  },
 
- collections:{list:'/admin/collections',detail:(id:string|number)=>`/admin/collections/${id}`},
- orders:{list:'/admin/orders',detail:(id:string|number)=>`/admin/orders/${id}`,status:(id:string|number)=>`/admin/orders/${id}/status`,confirmCod:(id:string|number)=>`/admin/orders/${id}/confirm-cod`,refund:(id:string|number)=>`/admin/orders/${id}/refund`,invoice:(id:string|number)=>`/admin/orders/${id}/invoice`},
- inventory:{list:'/admin/inventory',variant:(id:string|number)=>`/admin/inventory/${id}`,adjust:(id:string|number)=>`/admin/inventory/${id}/adjust`,stock:(id:string|number)=>`/admin/inventory/${id}/stock`,movements:(id:string|number)=>`/admin/inventory/${id}/movements`,bulk:'/admin/inventory/bulk-stock'},
- customers:{list:'/admin/customers',detail:(id:string|number)=>`/admin/customers/${id}`,status:(id:string|number)=>`/admin/customers/${id}/status`},
- promotions:{list:'/admin/promotions',detail:(id:string|number)=>`/admin/promotions/${id}`,toggle:(id:string|number)=>`/admin/promotions/${id}/toggle`,campaigns:'/admin/promotions/campaigns',campaign:(id:string|number)=>`/admin/promotions/campaigns/${id}`,campaignToggle:(id:string|number)=>`/admin/promotions/campaigns/${id}/toggle`},
- reviews:{list:'/admin/reviews',status:(id:string|number)=>`/admin/reviews/${id}/status`},
- returns:{list:'/admin/returns',status:(id:string|number)=>`/admin/returns/${id}/status`},
- shipping:{shipments:'/admin/shipping/shipments',create:(orderId:string|number)=>`/admin/shipping/orders/${orderId}/shipments`,awb:(id:string|number)=>`/admin/shipping/shipments/${id}/awb`,track:(id:string|number)=>`/admin/shipping/shipments/${id}/track`,cancel:(id:string|number)=>`/admin/shipping/shipments/${id}/cancel`},
- cms:{list:'/admin/cms',detail:(id:string|number)=>`/admin/cms/${id}`,reorder:'/admin/cms/reorder',preview:'/admin/cms/preview',drafts:'/admin/cms/drafts',versions:'/admin/cms/versions',publish:(id:string|number)=>`/admin/cms/versions/${id}/publish`,themes:'/admin/cms/themes',theme:(id:string|number)=>`/admin/cms/themes/${id}`,activateTheme:(id:string|number)=>`/admin/cms/themes/${id}/activate`,deactivateTheme:(id:string|number)=>`/admin/cms/themes/${id}/deactivate`},
- merchandising:{products:'/admin/merchandising/products',product:(id:string|number)=>`/admin/merchandising/products/${id}`,reorder:'/admin/merchandising/products/reorder',collectionReorder:(id:string|number)=>`/admin/merchandising/collections/${id}/reorder`},
- settings:'/admin/settings',storefrontConfig:'/admin/storefront-config',
- analytics:{overview:'/admin/analytics/overview',daily:'/admin/analytics/daily',products:'/admin/analytics/products',rebuild:'/admin/analytics/rebuild'},
- audit:'/admin/audit-logs',
- admins:{list:'/admin/admins',roles:'/admin/roles',create:'/admin/admins',detail:(id:string|number)=>`/admin/admins/${id}`,status:(id:string|number)=>`/admin/admins/${id}/status`},
- integrations:{list:'/admin/integrations',woocommerceStatus:'/admin/integrations/woocommerce/status',woocommerceSync:'/admin/integrations/woocommerce/sync',woocommerceProductsSync:'/admin/integrations/woocommerce/sync/products',woocommerceOrdersSync:'/admin/integrations/woocommerce/sync/orders',metaStatus:'/admin/integrations/meta/status',metaConnect:'/admin/integrations/meta/connect',connect:(key:string)=>`/admin/integrations/${key}/connect`,disconnect:(key:string)=>`/admin/integrations/${key}/disconnect`},
- whatsapp:{status:'/admin/whatsapp/status',conversations:'/admin/whatsapp/conversations',conversation:(phone:string)=>`/admin/whatsapp/conversations/${encodeURIComponent(phone)}`,reply:(phone:string)=>`/admin/whatsapp/conversations/${encodeURIComponent(phone)}/reply`,templates:'/admin/whatsapp/templates',templateSync:'/admin/whatsapp/templates/sync',automationMappings:'/admin/whatsapp-automation/mappings',automationMapping:(event:string)=>`/admin/whatsapp-automation/mappings/${encodeURIComponent(event)}`,automationTemplateSync:'/admin/whatsapp-automation/templates/sync'},
- notifications:{templates:'/admin/notifications/templates',outbox:'/admin/notifications/outbox',test:'/admin/notifications/test'},
- automations:{list:'/admin/automations',detail:(id:string|number)=>`/admin/automations/${id}`,toggle:(id:string|number)=>`/admin/automations/${id}/toggle`},
- marketing:{campaigns:'/admin/marketing/campaigns',campaign:(id:string|number)=>`/admin/marketing/campaigns/${id}`,lifecycle:(id:string|number,action:string)=>`/admin/marketing/campaigns/${id}/${action}`,stats:(id:string|number)=>`/admin/marketing/campaigns/${id}/stats`,events:'/admin/marketing/events',segments:'/admin/marketing/segments',segmentPreview:(id:string|number)=>`/admin/marketing/segments/${id}/preview`,providers:'/admin/marketing/providers'},
- ads:{status:'/admin/meta-ads/status',assets:'/admin/meta-ads/assets',adAccount:'/admin/meta-ads/accounts/select',accounts:'/admin/meta-ads/accounts',campaigns:'/admin/meta-ads/campaigns',adsets:'/admin/meta-ads/adsets',creatives:'/admin/meta-ads/creatives',ads:'/admin/meta-ads/ads',audiences:'/admin/meta-ads/audiences',retarget:'/admin/meta-ads/retarget',insights:'/admin/meta-ads/insights',aiGenerate:'/admin/meta-ads/generate'},
- ai:{providers:'/admin/ai/providers',health:'/admin/ai/health',provider:(id:string)=>`/admin/ai/providers/${id}`,generate:'/admin/ai/generate',productGenerate:(id:string|number)=>`/admin/ai/products/${id}/generate`,productApply:(id:string|number)=>`/admin/ai/products/${id}/apply`},
- events:{list:'/admin/event-bus/events',detail:(id:string|number)=>`/admin/event-bus/events/${id}`},
- ops:{metrics:'/admin/ops/metrics',audit:'/admin/ops/audit'},security:{me:'/admin/security/me',roles:'/admin/security/roles',permissions:'/admin/security/permissions',users:'/admin/security/users',audit:'/admin/security/audit',assignRole:(user:string|number,role:string|number)=>`/admin/security/users/${user}/roles/${role}`,revokeRole:(user:string|number,role:string|number)=>`/admin/security/users/${user}/roles/${role}`},
- fulfillment:{order:(id:string|number)=>`/admin/fulfillment/orders/${id}`,allocate:(id:string|number)=>`/admin/fulfillment/orders/${id}/allocate`,pick:(id:string|number)=>`/admin/fulfillment/allocations/${id}/pick`,pack:(id:string|number)=>`/admin/fulfillment/allocations/${id}/pack`,shipments:(id:string|number)=>`/admin/fulfillment/orders/${id}/shipments`},warehouses:{list:'/admin/warehouses',inventory:'/admin/warehouses/inventory',adjust:'/admin/warehouses/inventory/adjust'},support:{dashboard:'/admin/support/dashboard',tickets:'/admin/tickets',ticket:(id:string|number)=>`/admin/tickets/${id}`,reply:(id:string|number)=>`/admin/tickets/${id}/reply`,update:(id:string|number)=>`/admin/tickets/${id}`,resolve:(id:string|number)=>`/admin/support/tickets/${id}/resolve`,reopen:(id:string|number)=>`/admin/support/tickets/${id}/reopen`,notify:(id:string|number)=>`/admin/support/tickets/${id}/notify`},
- financial:{tax:'/admin/financial-reports/tax',invoices:'/admin/financial-reports/invoices',refunds:'/admin/financial-reports/refunds',wallet:'/admin/financial-reports/wallet',loyalty:'/admin/financial-reports/loyalty',closing:'/admin/financial-reports/closing'},
- postOrder:{eligibility:(id:string|number)=>`/admin/post-order/orders/${id}/eligibility`,cancel:(id:string|number)=>`/admin/post-order/orders/${id}/cancel`,returns:(id:string|number)=>`/admin/post-order/orders/${id}/returns`},
- reverseLogistics:{returnShipment:(id:string|number)=>`/admin/reverse-logistics/returns/${id}/shipment`,shipmentStatus:(id:string|number)=>`/admin/reverse-logistics/shipments/${id}/status`,ndr:(id:string|number)=>`/admin/reverse-logistics/shipments/${id}/ndr`,resolveNdr:(id:string|number)=>`/admin/reverse-logistics/ndr/${id}/resolve`,qc:(id:string|number)=>`/admin/reverse-logistics/returns/${id}/qc`,exchange:(id:string|number)=>`/admin/reverse-logistics/returns/${id}/exchange`},
- search:{rebuildRelations:'/admin/search/rebuild-relations'},
+  actions:{
+    orderTransition:(id:string|number)=>`/admin/actions/orders/${id}/transition`,
+    inventoryAdjust:'/admin/actions/inventory/adjust',
+    transfer:'/admin/actions/inventory/transfer',
+    fulfillment:(id:string|number)=>`/admin/actions/fulfillment/${id}`,
+    return:(id:string|number)=>`/admin/actions/returns/${id}`,
+    refund:(id:string|number)=>`/admin/actions/refunds/${id}`,
+  },
+
+  catalog:{
+    products:'/admin/catalog/products',
+    product:(id:string|number)=>`/admin/catalog/products/${id}`,
+    variants:(id:string|number)=>`/admin/catalog/products/${id}/variants`,
+    variant:(p:string|number,v:string|number)=>`/admin/catalog/products/${p}/variants/${v}`,
+    generateVariants:(id:string|number)=>`/admin/catalog/products/${id}/variants/generate`,
+    variantOptions:(p:string|number,v:string|number)=>`/admin/catalog/products/${p}/variants/${v}/attribute-options`,
+    attributes:'/admin/catalog/attributes',
+    attribute:(id:string|number)=>`/admin/catalog/attributes/${id}`,
+    attributeOptions:(id:string|number)=>`/admin/catalog/attributes/${id}/options`,
+    categories:'/admin/catalog/categories',
+    category:(id:string|number)=>`/admin/catalog/categories/${id}`,
+    media:(id:string|number)=>`/admin/catalog/products/${id}/media`,
+    bulkPrice:'/admin/catalog/products/bulk-price',
+  },
+
+  collections:{
+    list:'/admin/collections',
+    detail:(id:string|number)=>`/admin/collections/${id}`,
+  },
+
+  orders:{
+    list:'/admin/orders',
+    detail:(id:string|number)=>`/admin/orders/${id}`,
+    status:(id:string|number)=>`/admin/orders/${id}/status`,
+    confirmCod:(id:string|number)=>`/admin/orders/${id}/confirm-cod`,
+    refund:(id:string|number)=>`/admin/orders/${id}/refund`,
+    invoice:(id:string|number)=>`/admin/orders/${id}/invoice`,
+  },
+
+  inventory:{
+    list:'/admin/inventory',
+    variant:(id:string|number)=>`/admin/inventory/${id}`,
+    adjust:(id:string|number)=>`/admin/inventory/${id}/adjust`,
+    stock:(id:string|number)=>`/admin/inventory/${id}/stock`,
+    movements:(id:string|number)=>`/admin/inventory/${id}/movements`,
+    bulk:'/admin/inventory/bulk-stock',
+    warehouses:'/admin/inventory/warehouses',
+    warehouseStock:'/admin/inventory/warehouse-stock',
+    warehouseAdjust:'/admin/inventory/warehouse-adjust',
+  },
+
+  warehouses:{
+    list:'/admin/warehouses',
+    inventory:'/admin/warehouse-inventory',
+    adjust:'/admin/warehouse-inventory/adjust',
+  },
+
+  customers:{
+    list:'/admin/customers',
+    detail:(id:string|number)=>`/admin/customers/${id}`,
+    status:(id:string|number)=>`/admin/customers/${id}/status`,
+  },
+
+  customer360:{
+    dashboard:'/admin/customer-360',
+    profile:(id:string|number)=>`/admin/customer-360/${id}`,
+    tag:(id:string|number)=>`/admin/customer-360/${id}/tags`,
+    removeTag:(id:string|number,tag:string|number)=>`/admin/customer-360/${id}/tags/${tag}`,
+    note:(id:string|number)=>`/admin/customer-360/${id}/notes`,
+    consent:(id:string|number)=>`/admin/customer-360/${id}/consents`,
+    segment:(id:string|number)=>`/admin/customer-360/${id}/segments`,
+    mergePreview:'/admin/customer-360/merge/preview',
+    merge:'/admin/customer-360/merge',
+  },
+
+  promotions:{
+    list:'/admin/promotions',
+    detail:(id:string|number)=>`/admin/promotions/${id}`,
+    toggle:(id:string|number)=>`/admin/promotions/${id}/toggle`,
+    campaigns:'/admin/promotions/campaigns',
+    campaign:(id:string|number)=>`/admin/promotions/campaigns/${id}`,
+    campaignToggle:(id:string|number)=>`/admin/promotions/campaigns/${id}/toggle`,
+    performance:'/admin/promotions/performance',
+  },
+
+  reviews:{
+    list:'/admin/reviews',
+    status:(id:string|number)=>`/admin/reviews/${id}/status`,
+    moderate:(id:string|number)=>`/admin/reviews/${id}/moderate`,
+  },
+
+  returns:{
+    list:'/admin/returns',
+    status:(id:string|number)=>`/admin/returns/${id}/status`,
+  },
+
+  reverseLogistics:{
+    returnShipment:(id:string|number)=>`/admin/returns/${id}/reverse-shipment`,
+    shipmentStatus:(id:string|number)=>`/admin/reverse-shipments/${id}/status`,
+    ndr:(id:string|number)=>`/admin/shipments/${id}/ndr`,
+    resolveNdr:(id:string|number)=>`/admin/ndr/${id}/resolve`,
+    qc:(id:string|number)=>`/admin/returns/${id}/qc`,
+    exchange:(id:string|number)=>`/admin/returns/${id}/exchange`,
+  },
+
+  shipping:{
+    shipments:'/admin/shipping/shipments',
+    create:(orderId:string|number)=>`/admin/shipping/orders/${orderId}/shipments`,
+    awb:(id:string|number)=>`/admin/shipping/shipments/${id}/awb`,
+    track:(id:string|number)=>`/admin/shipping/shipments/${id}/track`,
+    cancel:(id:string|number)=>`/admin/shipping/shipments/${id}/cancel`,
+  },
+
+  fulfillment:{
+    list:'/admin/fulfillment',
+    order:(id:string|number)=>`/admin/fulfillment/orders/${id}`,
+    allocate:(id:string|number)=>`/admin/fulfillment/orders/${id}/allocate`,
+    allocation:(id:string|number)=>`/admin/fulfillment/allocations/${id}`,
+    transition:(id:string|number)=>`/admin/fulfillment/allocations/${id}/transition`,
+    pick:(id:string|number)=>`/admin/fulfillment/allocations/${id}/pick`,
+    pack:(id:string|number)=>`/admin/fulfillment/allocations/${id}/pack`,
+    shipments:(id:string|number)=>`/admin/fulfillment/orders/${id}/shipments`,
+    transfers:'/admin/fulfillment/transfers',
+    transferReceive:(id:string|number)=>`/admin/fulfillment/transfers/${id}/receive`,
+  },
+
+  cms:{
+    list:'/admin/cms',
+    detail:(id:string|number)=>`/admin/cms/${id}`,
+    reorder:'/admin/cms/reorder',
+    preview:'/admin/cms/preview',
+    drafts:'/admin/cms/drafts',
+    versions:'/admin/cms/versions',
+    publish:(id:string|number)=>`/admin/cms/versions/${id}/publish`,
+    themes:'/admin/cms/themes',
+    theme:(id:string|number)=>`/admin/cms/themes/${id}`,
+    activateTheme:(id:string|number)=>`/admin/cms/themes/${id}/activate`,
+    deactivateTheme:(id:string|number)=>`/admin/cms/themes/${id}/deactivate`,
+  },
+
+  storefrontConfig:'/admin/storefront-config',
+
+  merchandising:{
+    products:'/admin/merchandising/products',
+    product:(id:string|number)=>`/admin/merchandising/products/${id}`,
+    reorder:'/admin/merchandising/products/reorder',
+    collectionReorder:(id:string|number)=>`/admin/merchandising/collections/${id}/reorder`,
+  },
+
+  settings:'/admin/settings',
+
+  analytics:{
+    overview:'/admin/analytics/overview',
+    daily:'/admin/analytics/daily',
+    products:'/admin/analytics/products',
+    rebuild:'/admin/analytics/rebuild',
+    rebuildDaily:'/admin/analytics/rebuild-daily',
+  },
+
+  financial:{
+    tax:'/admin/finance/reports/tax',
+    invoices:'/admin/finance/reports/invoices',
+    refunds:'/admin/finance/reports/refunds',
+    wallet:'/admin/finance/reports/wallet',
+    loyalty:'/admin/finance/reports/loyalty',
+    closing:'/admin/finance/reports/closing',
+  },
+
+  postOrder:{
+    eligibility:(id:string|number)=>`/admin/post-order/orders/${id}/eligibility`,
+    cancel:(id:string|number)=>`/admin/post-order/orders/${id}/cancel`,
+    returns:(id:string|number)=>`/admin/post-order/orders/${id}/returns`,
+  },
+
+  audit:'/admin/audit-logs',
+
+  admins:{
+    list:'/admin/admins',
+    roles:'/admin/roles',
+    create:'/admin/admins',
+    detail:(id:string|number)=>`/admin/admins/${id}`,
+    status:(id:string|number)=>`/admin/admins/${id}/status`,
+  },
+
+  integrations:{
+    list:'/admin/integrations',
+    woocommerceStatus:'/admin/integrations/woocommerce/status',
+    woocommerceSync:'/admin/integrations/woocommerce/sync',
+    woocommerceProductsSync:'/admin/integrations/woocommerce/sync/products',
+    woocommerceOrdersSync:'/admin/integrations/woocommerce/sync/orders',
+    metaStatus:'/admin/integrations/meta/status',
+    metaConnect:'/admin/integrations/meta/connect',
+    connect:(key:string)=>`/admin/integrations/${key}/connect`,
+    disconnect:(key:string)=>`/admin/integrations/${key}/disconnect`,
+  },
+
+  whatsapp:{
+    status:'/admin/whatsapp/status',
+    conversations:'/admin/whatsapp/conversations',
+    conversation:(phone:string)=>`/admin/whatsapp/conversations/${encodeURIComponent(phone)}`,
+    reply:(phone:string)=>`/admin/whatsapp/conversations/${encodeURIComponent(phone)}/reply`,
+    templates:'/admin/whatsapp/templates',
+    templateSync:'/admin/whatsapp/templates/sync',
+    automationMappings:'/admin/whatsapp/order-automations',
+    automationMapping:(event:string)=>`/admin/whatsapp/order-automations/${encodeURIComponent(event)}`,
+    automationTemplateSync:'/admin/whatsapp/templates/sync-approved',
+  },
+
+  notifications:{
+    templates:'/admin/notifications/templates',
+    outbox:'/admin/notifications/outbox',
+    test:'/admin/notifications/test',
+  },
+
+  automations:{
+    list:'/admin/automations',
+    detail:(id:string|number)=>`/admin/automations/${id}`,
+    toggle:(id:string|number)=>`/admin/automations/${id}/toggle`,
+  },
+
+  marketing:{
+    campaigns:'/admin/marketing/campaigns',
+    campaign:(id:string|number)=>`/admin/marketing/campaigns/${id}`,
+    lifecycle:(id:string|number,action:string)=>`/admin/marketing/campaigns/${id}/${action}`,
+    stats:(id:string|number)=>`/admin/marketing/campaigns/${id}/stats`,
+    events:'/admin/marketing/events',
+    segments:'/admin/marketing/segments',
+    segmentPreview:(id:string|number)=>`/admin/marketing/segments/${id}/preview`,
+    providers:'/admin/marketing/providers',
+  },
+
+  ads:{
+    status:'/admin/ads/status',
+    assets:'/admin/ads/assets',
+    adAccount:'/admin/ads/assets/ad-account',
+    accounts:'/admin/ads/accounts',
+    campaigns:'/admin/ads/campaigns',
+    adsets:'/admin/ads/adsets',
+    creatives:'/admin/ads/creatives',
+    ads:'/admin/ads/ads',
+    audiences:'/admin/ads/audiences',
+    retarget:(id:string|number)=>`/admin/ads/audiences/${id}/retarget`,
+    insights:'/admin/ads/insights',
+    aiGenerate:'/admin/ads/ai/generate',
+    oauthStart:'/admin/meta/oauth/start',
+  },
+
+  ai:{
+    providers:'/admin/ai/providers',
+    health:'/admin/ai/health',
+    provider:(id:string)=>`/admin/ai/providers/${id}`,
+    generate:'/admin/ai/generate',
+    productGenerate:(id:string|number)=>`/admin/ai/products/${id}/generate`,
+    productApply:(id:string|number)=>`/admin/ai/products/${id}/apply`,
+  },
+
+  events:{
+    list:'/admin/events',
+    detail:(id:string|number)=>`/admin/events/${id}`,
+    create:'/admin/events',
+  },
+
+  ops:{
+    metrics:'/admin/ops/metrics',
+    audit:'/admin/ops/audit',
+    inventoryReservations:'/admin/ops/inventory-reservations',
+    expireReservations:'/admin/ops/inventory-reservations/expire',
+  },
+
+  security:{
+    me:'/admin/security/me',
+    roles:'/admin/security/roles',
+    permissions:'/admin/security/permissions',
+    users:'/admin/security/users',
+    audit:'/admin/security/audit',
+    assignRole:(user:string|number,role:string|number)=>`/admin/security/users/${user}/roles/${role}`,
+    revokeRole:(user:string|number,role:string|number)=>`/admin/security/users/${user}/roles/${role}`,
+  },
+
+  support:{
+    dashboard:'/admin/support/dashboard',
+    commandCenter:'/admin/support/command-center',
+    tickets:'/admin/support/tickets',
+    ticket:(id:string|number)=>`/admin/support/tickets/${id}`,
+    reply:(id:string|number)=>`/admin/support/tickets/${id}/messages`,
+    update:(id:string|number)=>`/admin/support/tickets/${id}`,
+    resolve:(id:string|number)=>`/admin/support/tickets/${id}/resolve`,
+    reopen:(id:string|number)=>`/admin/support/tickets/${id}/reopen`,
+    notify:(id:string|number)=>`/admin/support/tickets/${id}/notify-customer`,
+  },
+
+  search:{rebuildRelations:'/admin/search/rebuild-relations'},
 } as const;
+
 export const DEVICE_API_ROOT = '/api/device';
