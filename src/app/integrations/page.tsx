@@ -11,11 +11,49 @@ type Definition = { key:string; name:string; icon:any; description:string; capab
 const definitions:Definition[] = [
   {key:'woocommerce',name:'WooCommerce',icon:ShoppingBag,description:'Connect the WooCommerce store used as an external catalog/order source.',capabilities:['Products','Categories','Orders','Inventory events'],authorization:'Server-managed WooCommerce REST credentials'},
   {key:'meta',name:'Meta / Facebook & Instagram',icon:Megaphone,description:'Authorize Meta Business assets for Facebook, Instagram and marketing automation.',capabilities:['Facebook','Instagram','Ads','Catalog'],authorization:'Meta OAuth — no access token is entered here'},
-  {key:'whatsapp',name:'WhatsApp Business',icon:MessageCircle,description:'Connect WhatsApp Cloud API for customer messaging and order notifications.',capabilities:['Messages','Templates','Order updates','Webhooks'],authorization:'Server-managed Meta/WhatsApp credentials'},
+  {key:'whatsapp',name:'WhatsApp Business',icon:MessageCircle,description:'Connect WhatsApp Cloud API for customer messaging and order notifications.',capabilities:['Messages','Templates','Order updates','Webhooks'],authorization:'Meta Embedded Signup — server-side credential exchange'},
   {key:'fcm',name:'Firebase Cloud Messaging',icon:Flame,description:'Enable push notifications for web, Android and future native clients.',capabilities:['Web push','Android push','Order alerts'],authorization:'Server-managed Firebase service account'},
 ];
 
 const idempotency=()=>crypto.randomUUID();
+
+declare global {
+  interface Window {
+    FB?: { init: (options: Record<string, unknown>) => void; login: (callback: (response: any) => void, options: Record<string, unknown>) => void };
+    fbAsyncInit?: () => void;
+  }
+}
+
+const META_APP_ID = process.env.NEXT_PUBLIC_META_APP_ID || '';
+const META_WHATSAPP_CONFIG_ID = process.env.NEXT_PUBLIC_META_WHATSAPP_CONFIG_ID || '';
+
+function loadMetaSdk(): Promise<void> {
+  return new Promise((resolve, reject) => {
+    if (typeof window === 'undefined') return reject(new Error('Meta signup is browser-only.'));
+    if (window.FB) return resolve();
+    const existing = document.getElementById('facebook-jssdk');
+    if (existing) {
+      const started = Date.now();
+      const timer = window.setInterval(() => {
+        if (window.FB) { window.clearInterval(timer); resolve(); }
+        else if (Date.now() - started > 10000) { window.clearInterval(timer); reject(new Error('Meta SDK did not load.')); }
+      }, 100);
+      return;
+    }
+    window.fbAsyncInit = () => {
+      window.FB?.init({ appId: META_APP_ID, cookie: true, xfbml: false, version: 'v24.0' });
+      resolve();
+    };
+    const script = document.createElement('script');
+    script.id = 'facebook-jssdk';
+    script.async = true;
+    script.defer = true;
+    script.crossOrigin = 'anonymous';
+    script.src = 'https://connect.facebook.net/en_US/sdk.js';
+    script.onerror = () => reject(new Error('Unable to load Meta SDK.'));
+    document.body.appendChild(script);
+  });
+}
 
 export default function Integrations(){
   const[rows,setRows]=useState<Integration[]>([]);const[loading,setLoading]=useState(true);const[error,setError]=useState('');const[selected,setSelected]=useState<string|null>(null);const[busy,setBusy]=useState(false);const[message,setMessage]=useState('');const[confirmOpen,setConfirmOpen]=useState(false);const[syncing,setSyncing]=useState<string|null>(null);
@@ -27,6 +65,23 @@ export default function Integrations(){
   function beginConnect(key:string){setSelected(key);setConfirmOpen(true);setMessage('');setError('')}
 
   async function authorize(){if(!selected)return;setBusy(true);setError('');setMessage('');try{
+    if(selected==='whatsapp'){
+      if(!META_APP_ID||!META_WHATSAPP_CONFIG_ID) throw new Error('Meta WhatsApp Embedded Signup is not configured. Set NEXT_PUBLIC_META_APP_ID and NEXT_PUBLIC_META_WHATSAPP_CONFIG_ID in the Admin environment.');
+      await loadMetaSdk();
+      const result=await new Promise<any>((resolve,reject)=>{
+        const timeout=window.setTimeout(()=>reject(new Error('Meta signup timed out. Please try again.')),120000);
+        window.FB?.login((response:any)=>{window.clearTimeout(timeout);response?.authResponse?.code?resolve(response):reject(new Error(response?.status?.message||'Meta authorization was cancelled.'));},{
+          config_id:META_WHATSAPP_CONFIG_ID,
+          response_type:'code',
+          override_default_response_type:true,
+          extras:{sessionInfoVersion:'3'}
+        });
+      });
+      const resultData=result?.authResponse||{};
+      const callback=await api<any>('/admin/integrations/whatsapp/embedded-signup',{method:'POST',headers:{'Idempotency-Key':idempotency(),'Content-Type':'application/json'},body:JSON.stringify({code:resultData.code,config_id:META_WHATSAPP_CONFIG_ID})});
+      setMessage(callback.message||'WhatsApp connected. PriyasaCore is completing WABA, phone and template setup.');
+      setConfirmOpen(false);setSelected(null);await load();return;
+    }
     if(selected==='meta'){const result=await api<any>('/admin/integrations/meta/connect');const url=result.data?.authorization_url;if(!url)throw new Error('Meta authorization URL was not returned by PriyasaCore.');window.location.assign(url);return}
     const path=`/admin/integrations/${encodeURIComponent(selected)}/connect`;
     const result=await api(path,{method:'POST',headers:{'Idempotency-Key':idempotency(),'Content-Type':'application/json','X-Integration-Credential-Source':'server'},body:JSON.stringify({credential_source:'server'})});
@@ -44,6 +99,6 @@ export default function Integrations(){
     <div className="grid-cards">{items.map(item=>{const Icon=item.icon;const connected=Boolean(item.enabled)||item.status==='connected'||item.status==='healthy';return <Card key={item.key}><div className="integration-card-head"><div className="module-icon"><Icon size={22}/></div><span className={`status ${connected?'connected':'disconnected'}`}>{connected?<CheckCircle2 size={14}/>:<AlertTriangle size={14}/>} {connected?'Connected':'Not connected'}</span></div><h2>{item.name}</h2><p>{item.description}</p><div className="integration-capabilities">{item.capabilities.map(c=><span key={c}>{c}</span>)}</div><small className="integration-auth"><LockKeyhole size={12}/> {item.authorization}</small>{item.last_error&&<small className="form-error">{item.last_error}</small>}
       <div className="form-actions integration-actions">{connected&&item.key!=='meta'&&<Button onClick={()=>disconnect(item.key)} disabled={busy||Boolean(syncing)}><Unplug size={14}/> Disconnect</Button>}{!connected&&<Button className="primary" onClick={()=>beginConnect(item.key)} disabled={busy||Boolean(syncing)}><PlugZap size={14}/> Connect securely</Button>}{item.key==='meta'&&connected&&<span className="status connected"><CheckCircle2 size={14}/> OAuth active</span>}{item.key==='woocommerce'&&connected&&<div className="integration-sync-actions"><Button onClick={()=>sync('products')} disabled={Boolean(syncing)}> {syncing==='products'?<RefreshCw className="spin" size={14}/>:null} Products</Button><Button onClick={()=>sync('categories')} disabled={Boolean(syncing)}>{syncing==='categories'?<RefreshCw className="spin" size={14}/>:null} Categories</Button><Button onClick={()=>sync('orders')} disabled={Boolean(syncing)}>{syncing==='orders'?<RefreshCw className="spin" size={14}/>:null} Orders</Button></div>}</div>
     </Card>})}</div>
-    {selected&&confirmOpen&&<Modal title={`Connect ${definitions.find(d=>d.key===selected)?.name||selected}`} onClose={()=>!busy&&(setConfirmOpen(false),setSelected(null))}><div className="integration-consent"><div className="integration-consent-icon"><ShieldCheck size={28}/></div><h3>Allow PRIYASA to connect?</h3><p>This action authorizes PriyasaCore to use the provider credentials configured securely on the backend. No secret will be typed into, stored in, or returned to this browser.</p><div className="integration-consent-list"><div><CheckCircle2 size={15}/> Credentials remain server-side</div><div><CheckCircle2 size={15}/> Provider calls run through PriyasaCore</div><div><CheckCircle2 size={15}/> Connection can be revoked from this page</div><div><CheckCircle2 size={15}/> Actions are protected with idempotency</div></div>{error&&<div className="form-error" role="alert">{error}</div>}<div className="form-actions"><Button onClick={authorize} disabled={busy}>{busy?'Connecting securely…':'Allow & Connect'}</Button><Button onClick={()=>{setConfirmOpen(false);setSelected(null)}} disabled={busy}>Cancel</Button></div>{selected!=='meta'&&<p className="helper"><ExternalLink size={13}/> If this connection is not configured on PriyasaCore yet, add its credentials to the backend environment/secret store first. The Admin UI intentionally does not collect them.</p>}</div></Modal>}
+    {selected&&confirmOpen&&<Modal title={`Connect ${definitions.find(d=>d.key===selected)?.name||selected}`} onClose={()=>!busy&&(setConfirmOpen(false),setSelected(null))}><div className="integration-consent"><div className="integration-consent-icon"><ShieldCheck size={28}/></div><h3>Allow PRIYASA to connect?</h3><p>This action authorizes PriyasaCore to use the provider credentials configured securely on the backend. No secret will be typed into, stored in, or returned to this browser.</p><div className="integration-consent-list"><div><CheckCircle2 size={15}/> Credentials remain server-side</div><div><CheckCircle2 size={15}/> Provider calls run through PriyasaCore</div><div><CheckCircle2 size={15}/> Connection can be revoked from this page</div><div><CheckCircle2 size={15}/> Actions are protected with idempotency</div></div>{error&&<div className="form-error" role="alert">{error}</div>}<div className="form-actions"><Button onClick={authorize} disabled={busy}>{busy?'Connecting securely…':'Allow & Connect'}</Button><Button onClick={()=>{setConfirmOpen(false);setSelected(null)}} disabled={busy}>Cancel</Button></div>{selected==='whatsapp'?<p className="helper"><ExternalLink size={13}/> Meta will handle Business, WABA and phone authorization in its secure signup window. PriyasaCore receives the authorization code and completes the server-side setup; no WhatsApp token is entered here.</p>:selected!=='meta'&&<p className="helper"><ExternalLink size={13}/> If this connection is not configured on PriyasaCore yet, add its credentials to the backend environment/secret store first. The Admin UI intentionally does not collect them.</p>}</div></Modal>}
   </section>;
 }
