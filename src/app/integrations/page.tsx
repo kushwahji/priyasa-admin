@@ -68,17 +68,35 @@ export default function Integrations(){
     if(selected==='whatsapp'){
       if(!META_APP_ID||!META_WHATSAPP_CONFIG_ID) throw new Error('Meta WhatsApp Embedded Signup is not configured. Set NEXT_PUBLIC_META_APP_ID and NEXT_PUBLIC_META_WHATSAPP_CONFIG_ID in the Admin environment.');
       await loadMetaSdk();
-      const result=await new Promise<any>((resolve,reject)=>{
-        const timeout=window.setTimeout(()=>reject(new Error('Meta signup timed out. Please try again.')),120000);
-        window.FB?.login((response:any)=>{window.clearTimeout(timeout);response?.authResponse?.code?resolve(response):reject(new Error(response?.status?.message||'Meta authorization was cancelled.'));},{
+      const session=await new Promise<any>((resolve,reject)=>{
+        let sessionData:any=null;
+        const onMessage=(event:MessageEvent)=>{
+          if(event.origin!=='https://www.facebook.com')return;
+          try{
+            const data=typeof event.data==='string'?JSON.parse(event.data):event.data;
+            if(data?.type==='WA_EMBEDDED_SIGNUP'&&['FINISH','FINISH_ONLY_WABA'].includes(data.event)){sessionData=data.data||{};}
+          }catch{}
+        };
+        window.addEventListener('message',onMessage);
+        const cleanup=()=>window.removeEventListener('message',onMessage);
+        const timeout=window.setTimeout(()=>{cleanup();reject(new Error('Meta signup timed out. Please try again.'));},120000);
+        window.FB?.login((response:any)=>{
+          window.clearTimeout(timeout);cleanup();
+          if(response?.authResponse?.code)resolve({authResponse:response.authResponse,sessionData});
+          else reject(new Error(response?.status?.message||'Meta authorization was cancelled.'));
+        },{
           config_id:META_WHATSAPP_CONFIG_ID,
           response_type:'code',
           override_default_response_type:true,
-          extras:{sessionInfoVersion:'3'}
+          extras:{feature:'app_only_install',version:4,sessionInfoVersion:4}
         });
       });
-      const resultData=result?.authResponse||{};
-      const callback=await api<any>('/admin/integrations/whatsapp/embedded-signup',{method:'POST',headers:{'Idempotency-Key':idempotency(),'Content-Type':'application/json'},body:JSON.stringify({code:resultData.code,config_id:META_WHATSAPP_CONFIG_ID})});
+      const resultData=session?.authResponse||{};
+      const callback=await api<any>('/admin/integrations/whatsapp/embedded-signup',{method:'POST',headers:{'Idempotency-Key':idempotency(),'Content-Type':'application/json'},body:JSON.stringify({
+        code:resultData.code,config_id:META_WHATSAPP_CONFIG_ID,
+        waba_id:session?.sessionData?.waba_id||session?.sessionData?.wabaId,
+        phone_number_id:session?.sessionData?.phone_number_id||session?.sessionData?.phone_id
+      })});
       setMessage(callback.message||'WhatsApp connected. PriyasaCore is completing WABA, phone and template setup.');
       setConfirmOpen(false);setSelected(null);await load();return;
     }
