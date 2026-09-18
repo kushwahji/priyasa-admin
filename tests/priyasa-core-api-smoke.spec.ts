@@ -53,6 +53,23 @@ test.describe('PriyasaCore admin API smoke', () => {
       '/api/v1/admin/automations',
       '/api/v1/admin/ops/metrics',
       '/api/v1/admin/ops/audit',
+      '/api/v1/admin/me',
+      '/api/v1/admin/control-center/overview',
+      '/api/v1/admin/control-center/orders',
+      '/api/v1/admin/control-center/inventory',
+      '/api/v1/admin/control-center/operations',
+      '/api/v1/admin/storefront-config',
+      '/api/v1/admin/warehouses',
+      '/api/v1/admin/warehouse-inventory',
+      '/api/v1/admin/security/me',
+      '/api/v1/admin/security/roles',
+      '/api/v1/admin/security/permissions',
+      '/api/v1/admin/marketing/campaigns',
+      '/api/v1/admin/marketing/segments',
+      '/api/v1/admin/ads/status',
+      '/api/v1/admin/ai/providers',
+      '/api/v1/admin/events?per_page=1',
+      '/api/v1/admin/support/tickets?per_page=1',
     ]) await coreGet(request, path);
   });
 
