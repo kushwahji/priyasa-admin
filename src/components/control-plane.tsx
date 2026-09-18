@@ -1,0 +1,10 @@
+'use client';
+import {useEffect,useState} from 'react';
+import {RefreshCw,ExternalLink} from 'lucide-react';
+import Link from 'next/link';
+import {api} from '@/lib/api';
+import {Button,Card,ErrorState,Loading,PageHeader} from '@/components/ui';
+
+type Props={title:string;description:string;endpoint:string;links?:Array<[string,string]>};
+function summarize(value:unknown):string{if(value===null||value===undefined)return '—';if(typeof value==='string'||typeof value==='number'||typeof value==='boolean')return String(value);if(Array.isArray(value))return value.length+' records';if(typeof value==='object'){const o=value as Record<string,unknown>;const d=o.data;if(Array.isArray(d))return d.length+' records';if(d&&typeof d==='object'&&!Array.isArray(d)){const keys=Object.keys(d as object);return keys.slice(0,5).map(k=>k+': '+summarize((d as Record<string,unknown>)[k])).join(' · ')}return Object.keys(o).slice(0,6).join(' · ')}return 'Available'}
+export default function ControlPlanePage({title,description,endpoint,links=[]}:Props){const [data,setData]=useState<unknown>(null);const [loading,setLoading]=useState(true);const [error,setError]=useState('');async function load(){setLoading(true);setError('');try{setData(await api(endpoint))}catch(e){setError(e instanceof Error?e.message:'Request failed')}finally{setLoading(false)}}useEffect(()=>{load()},[endpoint]);return <section className="content"><PageHeader title={title} description={description} action={<Button onClick={load} disabled={loading}><RefreshCw size={14}/> Refresh</Button>}/>{error?<ErrorState error={error} onRetry={load}/>:loading?<Loading/>:<><Card><div className="card-title">Live API status</div><p style={{margin:'10px 0 0'}}>{summarize(data)}</p><code style={{display:'block',marginTop:12,fontSize:11,opacity:.65}}>{endpoint}</code></Card>{links.length>0&&<div className="grid" style={{marginTop:16}}>{links.map(([name,href])=><Card key={href}><Link href={href} style={{display:'flex',justifyContent:'space-between',alignItems:'center',fontWeight:700}}>{name}<ExternalLink size={15}/></Link></Card>)}</div>}</>}</section>}
