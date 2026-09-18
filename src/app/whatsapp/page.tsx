@@ -1,6 +1,7 @@
 'use client';
 import {useEffect,useState} from 'react';
 import {api} from '@/lib/api';
+import {API_ROUTES} from '@/lib/api-contract';
 import {dateTime,apiMessage,titleCase} from '@/lib/format';
 import {PageHeader,Card,DataToolbar,Button,Badge,Loading,ErrorState,Empty,Modal} from '@/components/ui';
 type Conversation={phone:string;count:number;latest_at?:string;latest_direction?:string;latest_message?:string};
@@ -35,7 +36,7 @@ export default function WhatsApp(){
   if(!selected||!text.trim())return;
   setBusy(true);
   try{
-   await api('/admin/whatsapp/reply',{method:'POST',headers:{'Idempotency-Key':crypto.randomUUID()},body:JSON.stringify({phone:selected,message:text.trim()})});
+   await api(API_ROUTES.whatsapp.reply(selected),{method:'POST',headers:{'Idempotency-Key':crypto.randomUUID()},body:JSON.stringify({message:text.trim()})});
    setText('');
    const r=await api<Message[]>(`/admin/whatsapp/conversations/${encodeURIComponent(selected)}/messages`);
    setMessages(r.data||[]);
