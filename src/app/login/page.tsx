@@ -9,7 +9,7 @@ type OtpResponse=OtpPayload & {data?:OtpPayload|{data?:OtpPayload};result?:OtpPa
 type VerifyPayload={token?:string;token_type?:string;user?:{id?:string|number;name?:string;email?:string;role?:string}};
 type VerifyResponse=VerifyPayload & {data?:VerifyPayload|{data?:VerifyPayload};result?:VerifyPayload};
 function firstPayload(response:OtpResponse):OtpPayload{
- const candidates:any[]=[response?.data,(response as any)?.result,(response as any)?.request,response];
+ const candidates:any[]=[response?.data,(response as any)?.result,(response as any)?.request,response?.meta,response];
  for(const candidate of candidates){
   if(candidate?.request_id||candidate?.requestId||candidate?.session_id||candidate?.sessionId)return candidate;
   if(candidate?.data?.request_id||candidate?.data?.requestId||candidate?.data?.session_id||candidate?.data?.sessionId)return candidate.data;
@@ -33,7 +33,7 @@ export default function Login(){
   try{
    const response=await api<OtpResponse>('/admin/auth/send-otp',{method:'POST',body:JSON.stringify({email:normalized})});
    const data=firstPayload(response);
-   const id=data.request_id||data.requestId||data.session_id||data.sessionId;
+   const id=data.request_id||data.requestId||data.session_id||data.sessionId||(response as any)?.request_id||(response as any)?.session_id;
    setSeconds(Number(data.retry_after||60));
    if(!id){setSent(false);setRequestId('');setOtp('');setError('The OTP was sent, but the server did not return a login session. Please request a new code.');return}
    setRequestId(String(id));setSent(true);setOtp('');
