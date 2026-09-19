@@ -52,3 +52,21 @@ test('mobile admin shell exposes navigation and key workspace links', async ({ p
   await page.goto('/login');
   await expect(page.getByRole('heading', { name: /admin portal/i })).toBeVisible();
 });
+
+test('authenticated admin smoke is enabled only with an explicit E2E token', async ({ page }) => {
+  const token = process.env.PRIYASA_ADMIN_E2E_TOKEN;
+  test.skip(!token, 'Set PRIYASA_ADMIN_E2E_TOKEN to run authenticated admin smoke tests.');
+
+  await page.goto('/login');
+  await page.evaluate((value) => localStorage.setItem('priyasa_admin_token', value), token!);
+  await page.reload();
+
+  await expect(page).toHaveURL(/\/$/);
+  await expect(page.getByRole('heading', { name: /dashboard/i })).toBeVisible();
+
+  for (const route of ['/products', '/orders', '/customers', '/inventory', '/returns', '/cms', '/analytics', '/integrations', '/security']) {
+    const response = await page.goto(route, { waitUntil: 'domcontentloaded' });
+    expect(response?.status() ?? 200, route).toBeLessThan(500);
+    await expect(page.locator('.content')).toBeVisible();
+  }
+});
