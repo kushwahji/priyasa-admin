@@ -9,7 +9,7 @@ type OtpResponse=OtpPayload & {data?:OtpPayload|{data?:OtpPayload};result?:OtpPa
 type VerifyPayload={token?:string;token_type?:string;user?:{id?:string|number;name?:string;email?:string;role?:string}};
 type VerifyResponse=VerifyPayload & {data?:VerifyPayload|{data?:VerifyPayload};result?:VerifyPayload};
 function firstPayload(response:OtpResponse):OtpPayload{
- const candidates:any[]=[response?.data,(response as any)?.result,(response as any)?.request,response?.meta,response];
+ const candidates:any[]=[response?.data,(response as any)?.result,(response as any)?.request,(response as any)?.meta,response];
  for(const candidate of candidates){
   if(candidate?.request_id||candidate?.requestId||candidate?.session_id||candidate?.sessionId)return candidate;
   if(candidate?.data?.request_id||candidate?.data?.requestId||candidate?.data?.session_id||candidate?.data?.sessionId)return candidate.data;
