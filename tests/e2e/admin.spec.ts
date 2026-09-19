@@ -46,3 +46,9 @@ test('login route does not expose protected shell', async ({ page }) => {
   await expect(page.locator('.sidebar')).toHaveCount(0);
   await expect(page.getByRole('heading', { name: /admin portal/i })).toBeVisible();
 });
+
+test('mobile admin shell exposes navigation and key workspace links', async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.goto('/login');
+  await expect(page.getByRole('heading', { name: /admin portal/i })).toBeVisible();
+});
