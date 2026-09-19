@@ -34,7 +34,7 @@ export const API_ROUTES = {
   storefrontConfig:'/admin/storefront-config',
   merchandising:{products:'/admin/merchandising/products',product:(id:string|number)=>`/admin/merchandising/products/${id}`,reorder:'/admin/merchandising/products/reorder',collectionReorder:(id:string|number)=>`/admin/merchandising/collections/${id}/reorder`},
   settings:'/admin/settings',
-  analytics:{overview:'/admin/analytics/overview',daily:'/admin/analytics/daily',products:'/admin/analytics/products',rebuild:'/admin/analytics/rebuild',rebuildDaily:'/admin/analytics/rebuild'},
+  analytics:{overview:'/admin/analytics/overview',daily:'/admin/analytics/daily',products:'/admin/analytics/products',rebuild:'/admin/analytics/rebuild',rebuildDaily:'/admin/analytics/rebuild-daily'},
   financial:{tax:'/admin/finance/reports/tax',invoices:'/admin/finance/reports/invoices',refunds:'/admin/finance/reports/refunds',wallet:'/admin/finance/reports/wallet',loyalty:'/admin/finance/reports/loyalty',closing:'/admin/finance/reports/closing'},
   postOrder:{eligibility:(id:string|number)=>`/admin/post-order/orders/${id}/eligibility`,cancel:(id:string|number)=>`/admin/post-order/orders/${id}/cancel`,returns:(id:string|number)=>`/admin/post-order/orders/${id}/returns`},
   audit:'/admin/audit-logs',
