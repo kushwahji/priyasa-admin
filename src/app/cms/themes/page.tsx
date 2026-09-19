@@ -1,7 +1,7 @@
 'use client';
 
 import {useEffect,useState} from 'react';
-import {Plus,Power,Trash2,RefreshCw} from 'lucide-react';
+import {Plus,Power,Trash2,RefreshCw,Sparkles} from 'lucide-react';
 import {api} from '@/lib/api';
 import {API_ROUTES} from '@/lib/api-contract';
 import {Badge,Button,Card,ErrorState,Loading,Modal,PageHeader} from '@/components/ui';
@@ -63,6 +63,14 @@ export default function Themes(){
   if(p)setForm(f=>({...f,type:p.type,name:f.name||p.name,decorations:JSON.stringify(p.decorations,null,2)}));
  }
 
+ function createPreset(key:string){
+  const p=presets[key];
+  if(!p)return;
+  setEditing(null);
+  setForm({...empty,key:key+'-theme',name:p.name,type:p.type,decorations:JSON.stringify(p.decorations,null,2)});
+  setOpen(true);
+ }
+
  function edit(t?:Theme){
   setEditing(t||null);
   setForm(t?{
@@ -122,6 +130,12 @@ export default function Themes(){
    {error&&<ErrorState error={error} onRetry={load}/>}
    {!themes.length&&!error ? <Loading/> : (
     <>
+
+     <Card>
+      <div className="card-title"><Sparkles size={16}/> Festival campaign controls</div>
+      <p className="muted">Create a ready-to-schedule festival theme. Set its priority and start/end dates, then publish it. Automatic mode will select only themes whose schedule is currently valid.</p>
+      <div className="form-actions">Object.entries(presets).map(([key,p])=><Button key={key} onClick={()=>createPreset(key)}><Sparkles size={13}/>{p.name}</Button>)</div>
+     </Card>
      <Card>
       <div className="form-grid">
        <label>Theme mode
