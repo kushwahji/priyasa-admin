@@ -17,4 +17,4 @@ jobs:
       - run: npm run build
       - run: npx playwright install --with-deps chromium
       - run: npm run start -- -p 3000 > /tmp/priyasa-admin.log 2>&1 &
-      - run: npm run test:e2e
+      - run: npx playwright test --project=chromium
