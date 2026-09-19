@@ -14,7 +14,7 @@ export async function runAdminApiSmokeChecks():Promise<SmokeCheck[]>{
   await read('Admin returns',API_ROUTES.returns.list);
   await read('Admin reviews',`${API_ROUTES.reviews.list}?per_page=1`);
   await read('Admin promotions',`${API_ROUTES.promotions.list}?per_page=1`);
-  await read('Admin analytics',`${API_ROUTES.analytics}?from=${new Date(Date.now()-29*86400000).toISOString().slice(0,10)}&to=${new Date().toISOString().slice(0,10)}`);
+  await read('Admin analytics',`${API_ROUTES.analytics.overview}?from=${new Date(Date.now()-29*86400000).toISOString().slice(0,10)}&to=${new Date().toISOString().slice(0,10)}`);
   return checks;
 }
 
