@@ -134,7 +134,7 @@ export default function Themes(){
      <Card>
       <div className="card-title"><Sparkles size={16}/> Festival campaign controls</div>
       <p className="muted">Create a ready-to-schedule festival theme. Set its priority and start/end dates, then publish it. Automatic mode will select only themes whose schedule is currently valid.</p>
-      <div className="form-actions">Object.entries(presets).map(([key,p])=><Button key={key} onClick={()=>createPreset(key)}><Sparkles size={13}/>{p.name}</Button>)</div>
+      <div className="form-actions">{Object.entries(presets).map(([key,p])=><Button key={key} onClick={()=>createPreset(key)}><Sparkles size={13}/>{p.name}</Button>)}</div>
      </Card>
      <Card>
       <div className="form-grid">
