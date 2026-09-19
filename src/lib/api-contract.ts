@@ -13,7 +13,7 @@ export type AdminList<T> = Pagination & { data:T[] };
  */
 export const API_ROUTES = {
   health:'/health', ready:'/ready',
-  auth:{sendOtp:'/admin/auth/send-otp',verifyOtp:'/admin/auth/verify-otp',me:'/admin/me',logout:'/admin/auth/logout'},
+  auth:{sendOtp:'/admin/auth/send-otp',verifyOtp:'/admin/auth/verify-otp',me:'/admin/me',logout:'/admin/auth/logout',capabilities:'/admin/capabilities'},
   dashboard:'/admin/analytics',
   controlCenter:{overview:'/admin/control-center/overview',dashboard:'/admin/control-center/dashboard',orders:'/admin/control-center/orders',customers:'/admin/control-center/customers',products:'/admin/control-center/products',inventory:'/admin/control-center/inventory',operations:'/admin/control-center/operations',bulkPrice:'/admin/control-center/bulk-price',bulkJob:(id:string|number)=>`/admin/control-center/bulk/${id}`},
   actions:{orderTransition:(id:string|number)=>`/admin/actions/orders/${id}/transition`,inventoryAdjust:'/admin/actions/inventory/adjust',transfer:'/admin/actions/inventory/transfer',fulfillment:(id:string|number)=>`/admin/actions/fulfillment/${id}`,return:(id:string|number)=>`/admin/actions/returns/${id}`,refund:(id:string|number)=>`/admin/actions/refunds/${id}`},
