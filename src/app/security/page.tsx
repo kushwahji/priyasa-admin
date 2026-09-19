@@ -27,7 +27,7 @@ export default function Security(){
   {loading&&!data?<Loading/>:data&&<div className="section-grid">
    <Card><div className="card-title">Current operator</div><p><b>{data.me?.name||data.me?.email||'Administrator'}</b></p><p className="muted">Roles: {Array.isArray(data.me?.roles)?data.me.roles.join(', '):(data.me?.role||'admin')}</p></Card>
    <Card><div className="card-title">Roles</div>{roles.length?<div className="quick">{roles.map((r:any)=><div key={String(r.id??r.name)}><b>{r.display_name||r.name||r.slug}</b><span><Badge>{r.is_active===false?'Inactive':'Active'}</Badge></span></div>)}</div>:<div className="empty">No roles returned.</div>}</Card>
-   <Card><div className="card-title">Admin users</div>{users.length?<div className="table-wrap"><table className="table"><thead><tr><th>Name</th><th>Email</th><th>Phone</th><th>Status</th></tr></thead><tbody>{users.map((u:any)=><tr key={String(u.id)}><td>{u.name||'—'}</td><td>{u.email||'—'}</td><td>{u.phone||'—'}</td><td><Badge>{u.status||'active'}</Badge></td></tr>)}</tbody></table></div>:<div className="empty">No admin users returned.</div>}</Card>
+   <Card><div className="card-title">Admin users</div>{users.length?<div className="table-wrap"><table className="table"><thead><tr><th>Name</th><th>Email</th><th>Mobile</th><th>Status</th></tr></thead><tbody>{users.map((u:any)=><tr key={String(u.id)}><td>{u.name||'—'}</td><td>{u.email||'—'}</td><td>{u.mobile||u.phone||'—'}</td><td><Badge>{u.status||'active'}</Badge></td></tr>)}</tbody></table></div>:<div className="empty">No admin users returned.</div>}</Card>
   </div>}
  </section>;
 }
