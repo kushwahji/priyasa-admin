@@ -15,7 +15,8 @@ const BLOCKS=[
  ['home-hero','Hero slider','hero_slider'],['home-promises','Service strip','service_strip'],['home-categories','Category tiles','category_tiles'],
  ['home-new-arrivals','New arrivals','product_carousel'],['home-editorial','Editorial grid','editorial_grid'],['home-flash-sale','Flash sale','flash_sale'],
  ['home-offer-banner','Offer banner','offer_banner'],['home-trending','Trending now','product_carousel'],['home-best-sellers','Best sellers','product_carousel'],
- ['home-brands','Brand carousel','brand_carousel'],['home-all-products','Product grid','product_grid'],['home-review-carousel','Review carousel','review_carousel'],['home-recommendations','Recommendations','personalized_products']
+ ['home-brands','Brand carousel','brand_carousel'],['home-all-products','Product grid','product_grid'],['home-review-carousel','Review carousel','review_carousel'],['home-recommendations','Recommendations','personalized_products'],
+ ['home-image-carousel','Image carousel','image_carousel'],['home-image-grid','Image grid','image_grid'],['home-split-banner','Split image banner','split_banner'],['home-promo-tiles','Promo tiles','promo_tiles'],['home-text-banner','Text / announcement','text_banner'],['home-video-banner','Video banner','video_banner']
 ] as const;
 
 const defaults:Record<string,any>={
@@ -29,10 +30,16 @@ const defaults:Record<string,any>={
  'product_grid':{query:{mode:'dynamic',source:'products',sort:'recommended',limit:30,filters:{in_stock:true}},display:{desktop_columns:5,tablet_columns:4,mobile_columns:2,load_more:true,load_more_step:12,show_wishlist:true,show_rating:true,show_discount:true,show_mrp:true}},
  'brand_carousel':{source:'featured_brands',limit:12,display:{desktop_columns:6,tablet_columns:4,mobile_cards:3,mobile_scroll:true,show_name:true}},
  'review_carousel':{source:'product_reviews',limit:10,display:{show_rating:true,show_customer:true,show_product:true,show_product_image:true,mobile_scroll:true}},
- 'personalized_products':{query:{mode:'personalized',strategy:'hybrid',limit:12,fallback_sort:'popular'}}
+ 'personalized_products':{query:{mode:'personalized',strategy:'hybrid',limit:12,fallback_sort:'popular'}},
+ 'image_carousel':{display:{layout:'carousel',mobile_layout:'carousel',mobile_scroll:true},items:[{image_url:'',mobile_image_url:'',title:'',subtitle:'',href:'/shop',cta_label:'Shop now'}]},
+ 'image_grid':{display:{layout:'grid',desktop_columns:3,tablet_columns:2,mobile_columns:2},items:[{image_url:'',title:'',subtitle:'',href:'/shop',cta_label:'Shop now'},{image_url:'',title:'',subtitle:'',href:'/shop',cta_label:'Shop now'},{image_url:'',title:'',subtitle:'',href:'/shop',cta_label:'Shop now'}]},
+ 'split_banner':{layout:'50-50',image_url:'',mobile_image_url:'',eyebrow:'PRIYASA EDIT',title:'Your next occasion look',subtitle:'Curated styles for every moment.',cta:{label:'Shop now',href:'/shop'},image_position:'right'},
+ 'promo_tiles':{display:{layout:'grid',desktop_columns:4,tablet_columns:2,mobile_columns:2},items:[]},
+ 'text_banner':{eyebrow:'PRIYASA',title:'A little more style, every day.',subtitle:'Discover the latest collection.',cta:{label:'Explore now',href:'/shop'}},
+ 'video_banner':{video_url:'',poster_url:'',autoplay:true,muted:true,loop:true,cta:{label:'Shop the edit',href:'/shop'}}
 };
 
-const blank:Form={key:'home-offer-banner',type:'offer_banner',title:'',subtitle:'',image_url:'',cta_label:'Shop Now',cta_href:'/',content:'{}',sort_order:70,is_active:true,starts_at:'',ends_at:''};
+const blank:Form={key:'home-custom-block',type:'image_grid',title:'',subtitle:'',image_url:'',cta_label:'Shop Now',cta_href:'/',content:'{}',sort_order:70,is_active:true,starts_at:'',ends_at:''};
 
 function pretty(value:any){return JSON.stringify(value??{},null,2)}
 function parse(value:string){try{return JSON.parse(value||'{}')}catch{throw new Error('Content JSON must be valid JSON.')}}
@@ -105,7 +112,7 @@ export default function Cms(){
      <label>Starts at<input type="datetime-local" value={form.starts_at} onChange={e=>setForm({...form,starts_at:e.target.value})}/></label>
      <label>Ends at<input type="datetime-local" value={form.ends_at} onChange={e=>setForm({...form,ends_at:e.target.value})}/></label>
     </div>
-    {['hero_slider','offer_banner','editorial_grid'].includes(form.type)&&imageField('Primary / fallback image',form.image_url,v=>setForm({...form,image_url:v}))}
+    {['hero_slider','offer_banner','editorial_grid','image_carousel','image_grid','split_banner','promo_tiles','video_banner'].includes(form.type)&&imageField('Primary / fallback image',form.image_url,v=>setForm({...form,image_url:v}))}
     <div className="form-grid">
      <label>CTA label<input value={form.cta_label} onChange={e=>setForm({...form,cta_label:e.target.value})}/></label>
      <label>CTA link<input value={form.cta_href} onChange={e=>setForm({...form,cta_href:e.target.value})}/></label>
@@ -119,6 +126,9 @@ export default function Cms(){
     </div></Card>}
     {form.type==='offer_banner'&&<Card>{imageField('Offer image',(()=>{try{return parse(form.content).image_url||''}catch{return ''}})(),v=>patchContent(x=>{x.image_url=v}))}</Card>}
     {form.type==='hero_slider'&&<Card><div className="card-title">Hero slide quick upload</div>{(()=>{let slides:Slide[]=[];try{slides=parse(form.content).items||[]}catch{}return <div className="form">{slides.map((sl,i)=><div key={i} className="card"><div className="form-grid"><label>Slide {i+1} image<input value={sl.image_url||''} onChange={e=>patchContent(x=>{x.items=x.items||[];x.items[i].image_url=e.target.value})}/></label><label>Mobile image<input value={sl.mobile_image_url||''} onChange={e=>patchContent(x=>{x.items=x.items||[];x.items[i].mobile_image_url=e.target.value})}/></label><label>Title<input value={sl.title||''} onChange={e=>patchContent(x=>{x.items[i].title=e.target.value})}/></label><label>CTA link<input value={sl.cta?.href||''} onChange={e=>patchContent(x=>{x.items[i].cta={...(x.items[i].cta||{}),href:e.target.value}})}/></label></div><div className="form-actions"><Button onClick={()=>patchContent(x=>x.items.splice(i,1))}><Trash2 size={13}/> Remove</Button></div></div>)}<Button onClick={()=>patchContent(x=>{x.items=x.items||[];x.items.push({image_url:'',title:'',subtitle:'',cta:{label:'Shop Now',href:'/shop'}})})}><Plus size={13}/> Add slide</Button></div>})()}</Card>}
+    {['image_carousel','image_grid','promo_tiles'].includes(form.type)&&<Card><div className="card-title">Image items</div><p className="muted">Add image cards without editing JSON. Each item supports image_url, mobile_image_url, title, subtitle, href and cta_label.</p>{(()=>{let items:any[]=[];try{items=parse(form.content).items||[]}catch{}return <div className="form">{items.map((item,i)=><div className="card" key={i}><div className="form-grid"><label>Image URL<input value={item.image_url||''} onChange={e=>patchContent(x=>{x.items=x.items||[];x.items[i].image_url=e.target.value})}/></label><label>Mobile image URL<input value={item.mobile_image_url||''} onChange={e=>patchContent(x=>{x.items[i].mobile_image_url=e.target.value})}/></label><label>Title<input value={item.title||item.name||''} onChange={e=>patchContent(x=>{x.items[i].title=e.target.value})}/></label><label>Link<input value={item.href||''} onChange={e=>patchContent(x=>{x.items[i].href=e.target.value})}/></label><label>CTA label<input value={item.cta_label||''} onChange={e=>patchContent(x=>{x.items[i].cta_label=e.target.value})}/></label></div><div className="form-actions"><Button onClick={()=>patchContent(x=>x.items.splice(i,1))}><Trash2 size={13}/> Remove</Button></div></div>)}<Button onClick={()=>patchContent(x=>{x.items=x.items||[];x.items.push({image_url:'',mobile_image_url:'',title:'',subtitle:'',href:'/shop',cta_label:'Shop now'})})}><Plus size={13}/> Add image</Button></div>})()}</Card>}
+    {form.type==='split_banner'&&<Card><div className="card-title">Split banner content</div><div className="form-grid"><label>Image position<select value={(()=>{try{return parse(form.content).image_position||'right'}catch{return 'right'}})()} onChange={e=>patchContent(x=>{x.image_position=e.target.value})}><option value="right">Right</option><option value="left">Left</option></select></label><label>Mobile image URL<input value={(()=>{try{return parse(form.content).mobile_image_url||''}catch{return ''}})()} onChange={e=>patchContent(x=>{x.mobile_image_url=e.target.value})}/></label></div></Card>}
+    {form.type==='video_banner'&&<Card><div className="card-title">Video banner</div><div className="form-grid"><label>Video URL<input value={(()=>{try{return parse(form.content).video_url||''}catch{return ''}})()} onChange={e=>patchContent(x=>{x.video_url=e.target.value})}/></label><label>Poster URL<input value={(()=>{try{return parse(form.content).poster_url||''}catch{return ''}})()} onChange={e=>patchContent(x=>{x.poster_url=e.target.value})}/></label></div></Card>}
     <label><span style={{display:'flex',justifyContent:'space-between',alignItems:'center'}}>Advanced content JSON <a href="/cms/themes" className="muted">Theme Studio <ExternalLink size={12}/></a></span><textarea rows={14} className="wide-control note" value={form.content} onChange={e=>setForm({...form,content:e.target.value})}/></label>
     <div className="form-actions"><Button onClick={()=>setOpen(false)}>Cancel</Button><Button className="primary" disabled={busy||uploading} onClick={save}><Save size={14}/>{busy?'Saving…':'Save & publish'}</Button></div>
    </div>
