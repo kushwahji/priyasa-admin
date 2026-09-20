@@ -5,7 +5,7 @@ import {api} from '@/lib/api';
 import {PageHeader,Card,Button,Loading,ErrorState} from '@/components/ui';
 
 type Template={key:string;name:string;type:string;festival?:string|null;description:string;tokens:{colors:Record<string,string>};decorations:{enabled:boolean;type:string;intensity:string};};
-type Response={templates?:unknown};
+type Response={templates?:unknown;message?:string};
 function normalizeTemplates(value:unknown):Template[]{
  if(Array.isArray(value)) return value.filter((item):item is Template=>!!item&&typeof item==='object') as Template[];
  if(value&&typeof value==='object'){
@@ -31,13 +31,13 @@ export default function StorefrontThemesPage(){
  useEffect(()=>{load()},[]);
  async function apply(key:string){
   setBusy(key);setError('');setMessage('');
-  try{const r=await api('/admin/cms/theme-templates/apply',{method:'POST',body:JSON.stringify({key})});setMessage(r.data?.message||'Template applied.');}
+  try{const r=await api<Response>('/admin/cms/theme-templates/apply',{method:'POST',body:JSON.stringify({key})});setMessage(r.data?.message||'Template applied.');}
   catch(e){setError(e instanceof Error?e.message:'Unable to apply template')}
   finally{setBusy('')}
  }
  async function automatic(){
   setBusy('automatic');setError('');setMessage('');
-  try{const r=await api('/admin/cms/theme-templates/automatic',{method:'POST'});setMessage(r.data?.message||'Automatic themes restored.');}
+  try{const r=await api<Response>('/admin/cms/theme-templates/automatic',{method:'POST'});setMessage(r.data?.message||'Automatic themes restored.');}
   catch(e){setError(e instanceof Error?e.message:'Unable to restore automatic themes')}
   finally{setBusy('')}
  }
