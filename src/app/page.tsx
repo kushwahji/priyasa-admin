@@ -7,7 +7,7 @@ import {api} from '@/lib/api';
 import {Order,Paginated,Product} from '@/lib/types';
 import {PageHeader,Card,Loading,ErrorState,Badge,Button} from '@/components/ui';
 
-type Analytics={orders:number;sales:number;aov:number;customers:number;returns:number;payment_failures:number;low_stock:number;series?:Array<{date:string;orders:number;sales:number}>};
+type Analytics={orders:number;sales:number;aov:number;customers:number;returns:number;payment_failures:number;low_stock:number;visitors?:number;sessions?:number;page_views?:number;add_to_cart_sessions?:number;series?:Array<{date:string;orders:number;sales:number}>};
 
 function normalizeAnalytics(value:any):Analytics|null{
  if(!value || typeof value!=='object' || Array.isArray(value)) return null;
@@ -42,7 +42,7 @@ export default function Dashboard(){
    <div className="grid">
     <Card><div className="metric-label">Sales · 30 days</div><div className="metric">{analytics?money(analytics.sales):'—'}</div><div className="metric-label">Core-reported order value</div></Card>
     <Card><div className="metric-label">Orders · 30 days</div><div className="metric">{analytics?.orders??'—'}</div><div className="metric-label">AOV {analytics?money(analytics.aov):'—'}</div></Card>
-    <Card><div className="metric-label">Customers</div><div className="metric">{analytics?.customers??'—'}</div><div className="metric-label">Customer activity</div></Card>
+    <Card><div className="metric-label">Visitors · 30 days</div><div className="metric">{analytics?.visitors??'—'}</div><div className="metric-label">{analytics?.sessions??0} sessions · {analytics?.page_views??0} page views</div></Card>
     <Card><div className="metric-label">Attention</div><div className="metric">{analytics?attention:'—'}</div><div className="metric-label">Low stock · Returns · Payment failures</div></Card>
    </div>
    <Card><div className="card-title">Commerce control areas</div><div className="quick">{workspaces.map(([name,desc,href,Icon])=><Link key={href} href={href}><b><Icon size={15}/> {name}</b><span>{desc}<ArrowRight size={14}/></span></Link>)}</div></Card>
