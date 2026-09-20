@@ -8,6 +8,15 @@ import {Order,Paginated,Product} from '@/lib/types';
 import {PageHeader,Card,Loading,ErrorState,Badge,Button} from '@/components/ui';
 
 type Analytics={orders:number;sales:number;aov:number;customers:number;returns:number;payment_failures:number;low_stock:number;series?:Array<{date:string;orders:number;sales:number}>};
+
+function normalizeAnalytics(value:any):Analytics|null{
+ if(!value || typeof value!=='object' || Array.isArray(value)) return null;
+ const rawSeries=value.series;
+ const series=Array.isArray(rawSeries)
+  ? rawSeries.map((x:any)=>({date:String(x?.date??x?.day??''),orders:Number(x?.orders??0),sales:Number(x?.sales??x?.revenue??0)}))
+  : [];
+ return {...value,series,orders:Number(value.orders??0),sales:Number(value.sales??value.revenue??0),aov:Number(value.aov??0),customers:Number(value.customers??0),returns:Number(value.returns??0),payment_failures:Number(value.payment_failures??0),low_stock:Number(value.low_stock??0)};
+}
 const money=(n:number)=>`₹${Number(n||0).toLocaleString('en-IN',{maximumFractionDigits:2})}`;
 const workspaces=[
  ['Catalog','Products, variants, media, categories and collections','/products',PackageSearch],
@@ -22,9 +31,9 @@ const workspaces=[
 
 export default function Dashboard(){
  const [orders,setOrders]=useState<Paginated<Order>|null>(null),[products,setProducts]=useState<Paginated<Product>|null>(null),[health,setHealth]=useState<any>(null),[analytics,setAnalytics]=useState<Analytics|null>(null),[loading,setLoading]=useState(true),[error,setError]=useState('');
- async function load(){setLoading(true);setError('');try{const [o,p,h,a]=await Promise.all([api<Paginated<Order>>('/admin/orders?per_page=8'),api<Paginated<Product>>('/admin/catalog/products?per_page=5'),api<any>('/health'),api<Analytics>('/admin/analytics?range=30d').catch(()=>null)]);setOrders(o.data||null);setProducts(p.data||null);setHealth(h.data);setAnalytics((a as any)?.data??null)}catch(e){setError(e instanceof Error?e.message:'Request failed')}finally{setLoading(false)}}
+ async function load(){setLoading(true);setError('');try{const [o,p,h,a]=await Promise.all([api<Paginated<Order>>('/admin/orders?per_page=8'),api<Paginated<Product>>('/admin/catalog/products?per_page=5'),api<any>('/health'),api<Analytics>('/admin/analytics?range=30d').catch(()=>null)]);setOrders(o.data||null);setProducts(p.data||null);setHealth(h.data);setAnalytics(normalizeAnalytics((a as any)?.data))}catch(e){setError(e instanceof Error?e.message:'Request failed')}finally{setLoading(false)}}
  useEffect(()=>{load()},[]);
- const maxSales=useMemo(()=>Math.max(1,...(analytics?.series||[]).map(x=>Number(x.sales||0))),[analytics]);
+ const maxSales=useMemo(()=>Math.max(1,...(Array.isArray(analytics?.series)?analytics.series:[]).map(x=>Number(x.sales||0))),[analytics]);
  const attention=analytics?(analytics.low_stock+analytics.returns+analytics.payment_failures):0;
  return <section className="content">
   <PageHeader title="Commerce Dashboard" description="Live operating view of the PRIYASA commerce platform." action={<Button onClick={load} disabled={loading}><RefreshCw size={14}/> {loading?'Refreshing…':'Refresh'}</Button>}/>
