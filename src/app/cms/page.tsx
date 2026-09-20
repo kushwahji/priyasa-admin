@@ -36,12 +36,13 @@ const blank:Form={key:'home-offer-banner',type:'offer_banner',title:'',subtitle:
 
 function pretty(value:any){return JSON.stringify(value??{},null,2)}
 function parse(value:string){try{return JSON.parse(value||'{}')}catch{throw new Error('Content JSON must be valid JSON.')}}
+function normalizeSections(value:any):List{const root=value?.data && !Array.isArray(value.data)?value.data:value;const rows=Array.isArray(root)?root:(Array.isArray(root?.data)?root.data:(Array.isArray(root?.items)?root.items:[]));return {data:rows,current_page:Number(root?.current_page||1),last_page:Number(root?.last_page||1)}}
 
 export default function Cms(){
  const [list,setList]=useState<List|null>(null),[q,setQ]=useState(''),[editing,setEditing]=useState<Section|null>(null),[open,setOpen]=useState(false),[form,setForm]=useState<Form>({...blank}),[busy,setBusy]=useState(false),[error,setError]=useState(''),[uploading,setUploading]=useState(false);
  const existing=useMemo(()=>new Set((list?.data||[]).map(s=>s.key)),[list]);
 
- async function load(){setError('');try{const p=new URLSearchParams({per_page:'100'});if(q)p.set('key',q);const r=await api<List>(`/admin/cms?${p}`);setList(r.data||null)}catch(e){setError(apiMessage(e,'Unable to load CMS'))}}
+ async function load(){setError('');try{const p=new URLSearchParams({per_page:'100'});if(q)p.set('key',q);const r=await api<any>(`/admin/cms?${p}`);setList(normalizeSections(r.data))}catch(e){setError(apiMessage(e,'Unable to load CMS'))}}
  useEffect(()=>{load()},[]);useEffect(()=>{const t=setTimeout(load,250);return()=>clearTimeout(t)},[q]);
 
  function payloadOf(s:Section){return s.content??s.payload??{}}
