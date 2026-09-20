@@ -48,6 +48,21 @@ function normalizeSections(value:any):List{const root=value?.data && !Array.isAr
 export default function Cms(){
  const [list,setList]=useState<List|null>(null),[q,setQ]=useState(''),[editing,setEditing]=useState<Section|null>(null),[open,setOpen]=useState(false),[form,setForm]=useState<Form>({...blank}),[busy,setBusy]=useState(false),[error,setError]=useState(''),[uploading,setUploading]=useState(false);
  const existing=useMemo(()=>new Set((list?.data||[]).map(s=>s.key)),[list]);
+ const STANDARD_ORDER=useMemo(()=>BLOCKS.map((x,i)=>({key:x[0],order:(i+1)*10})),[]);
+ async function resetLayout(){
+  if(!list?.data?.length)return;
+  if(!confirm('Reset section order to the PRIYASA default layout? This changes order only; content and publishing state stay unchanged.'))return;
+  setBusy(true);setError('');
+  try{
+   const orderMap=new Map(STANDARD_ORDER.map(x=>[x.key,x.order]));
+   const rows=[...(list.data||[])].sort((a,b)=>(orderMap.get(a.key)??10000+a.sort_order)-(orderMap.get(b.key)??10000+b.sort_order));
+   for(let i=0;i<rows.length;i++){
+    const s=rows[i]; const target=orderMap.get(s.key)??(1000+i*10);
+    if(s.sort_order!==target) await api(`/admin/cms/${s.id}`,{method:'PUT',body:JSON.stringify({...s,content:payloadOf(s),sort_order:target})});
+   }
+   await load();
+  }catch(e){setError(apiMessage(e,'Unable to reset home order'))}finally{setBusy(false)}
+ }
 
  async function load(){setError('');try{const p=new URLSearchParams({per_page:'100'});if(q)p.set('key',q);const r=await api<any>(`/admin/cms?${p}`);setList(normalizeSections(r.data))}catch(e){setError(apiMessage(e,'Unable to load CMS'))}}
  useEffect(()=>{load()},[]);useEffect(()=>{const t=setTimeout(load,250);return()=>clearTimeout(t)},[q]);
@@ -91,9 +106,9 @@ export default function Cms(){
   }catch(e){setError(apiMessage(e,'Unable to reorder blocks'))}finally{setBusy(false)}}
 
  return <section className="content">
-  <PageHeader title="Home Page Builder" description="Build /home visually from CMS data: upload or paste images, control banners, offers, carousels, grids, product feeds, flash sales and schedules." action={<div className="form-actions"><Button onClick={load} disabled={busy}><RefreshCw size={14}/> Refresh</Button><Button className="primary" onClick={()=>openEditor()}><Plus size={14}/> Custom block</Button></div>}/>
+  <PageHeader title="Home Page Builder" description="Build /home visually from CMS data: upload or paste images, control banners, offers, carousels, grids, product feeds, flash sales and schedules." action={<div className="form-actions"><Button onClick={load} disabled={busy}><RefreshCw size={14}/> Refresh</Button><Button onClick={resetLayout} disabled={busy||!list?.data?.length}>Reset order</Button><Button className="primary" onClick={()=>openEditor()}><Plus size={14}/> Add section</Button></div>}/>
   {error&&<ErrorState error={error} onRetry={load}/>}
-  <Card><div className="card-title">Quick add home blocks</div><p className="muted">Create only the blocks you need. Existing blocks are edited below; no code change is required for normal merchandising.</p><div className="quick">{BLOCKS.filter(x=>!existing.has(x[0])).map(x=><button key={x[0]} className="btn" onClick={()=>openEditor(undefined,x[0])}><Plus size={13}/>{x[1]}</button>)}</div>{existing.size===BLOCKS.length&&<div className="muted">All standard home blocks are configured.</div>}</Card>
+  <Card><div className="card-title">Quick add home blocks</div><p className="muted">Add sections, drag their order with arrows, choose Grid / Carousel / Rail for supported sections, select products or collections, upload banners and schedule campaigns. The storefront receives the final rendered Home API.</p><div className="quick">{BLOCKS.filter(x=>!existing.has(x[0])).map(x=><button key={x[0]} className="btn" onClick={()=>openEditor(undefined,x[0])}><Plus size={13}/>{x[1]}</button>)}</div>{existing.size===BLOCKS.length&&<div className="muted">All standard home blocks are configured.</div>}</Card>
   {!list&&!error?<Loading/>:list?.data?.length?<Card><div className="card-title">Home layout</div><p className="muted">Lower sort order appears first. Use arrows for fast merchandising order.</p><div className="cms-list">{[...list.data].sort((a,b)=>a.sort_order-b.sort_order).map((s,i)=><div className="cms-row" key={String(s.id)}>
    <div className="cms-thumb">{(s.image_url||payloadOf(s).image_url||payloadOf(s).items?.[0]?.image_url)?<img src={s.image_url||payloadOf(s).image_url||payloadOf(s).items[0].image_url} alt=""/>:<span>{s.type.replaceAll('_',' ')}</span>}</div>
    <div className="cms-main"><div><b>{s.title||s.key}</b><Badge>{s.is_active?'Live':'Draft'}</Badge></div><div className="muted">{s.key} · {s.type} · order {s.sort_order}</div><div className="muted">{s.starts_at||s.ends_at?`${s.starts_at||'Now'} → ${s.ends_at||'No end'}`:'Always active'}</div></div>
@@ -122,7 +137,9 @@ export default function Cms(){
       <label>Desktop columns<input type="number" min="1" max="8" value={(()=>{try{return parse(form.content).display?.desktop_columns??''}catch{return ''}})()} onChange={e=>patchContent(x=>{x.display=x.display||{};x.display.desktop_columns=Number(e.target.value)})}/></label>
       <label>Mobile cards / columns<input type="number" min="1" max="4" value={(()=>{try{const x=parse(form.content);return x.display?.mobile_cards??x.display?.mobile_columns??''}catch{return ''}})()} onChange={e=>patchContent(x=>{x.display=x.display||{};x.display.mobile_cards=Number(e.target.value);x.display.mobile_columns=Number(e.target.value)})}/></label>
       <label>Product/category limit<input type="number" min="1" max="100" value={(()=>{try{return parse(form.content).query?.limit??parse(form.content).limit??''}catch{return ''}})()} onChange={e=>patchContent(x=>{x.query=x.query||{};x.query.limit=Number(e.target.value)})}/></label>
-      <label>Sort / source<input value={(()=>{try{const x=parse(form.content);return x.query?.sort||x.source||''}catch{return ''}})()} onChange={e=>patchContent(x=>{x.query=x.query||{};x.query.sort=e.target.value;x.source=e.target.value})}/></label>
+      <label>Layout<select value={(()=>{try{const x=parse(form.content);return x.display?.layout||x.layout?.type||'carousel'}catch{return 'carousel'}})()} onChange={e=>patchContent(x=>{x.display=x.display||{};x.display.layout=e.target.value;x.display.type=e.target.value})}><option value="carousel">Carousel</option><option value="rail">Horizontal rail</option><option value="grid">Grid</option></select></label>
+      <label>Content source<select value={(()=>{try{const x=parse(form.content);return x.query?.source||x.source||'products'}catch{return 'products'}})()} onChange={e=>patchContent(x=>{x.query=x.query||{};x.query.source=e.target.value;x.source=e.target.value})}><option value="products">Products</option><option value="collection">Collection</option><option value="category">Category</option><option value="dynamic">Dynamic / latest</option></select></label>
+      <label>Sort<input value={(()=>{try{return parse(form.content).query?.sort||'recommended'}catch{return 'recommended'}})()} onChange={e=>patchContent(x=>{x.query=x.query||{};x.query.sort=e.target.value})}/></label>
     </div></Card>}
     {form.type==='offer_banner'&&<Card>{imageField('Offer image',(()=>{try{return parse(form.content).image_url||''}catch{return ''}})(),v=>patchContent(x=>{x.image_url=v}))}</Card>}
     {form.type==='hero_slider'&&<Card><div className="card-title">Hero slide quick upload</div>{(()=>{let slides:Slide[]=[];try{slides=parse(form.content).items||[]}catch{}return <div className="form">{slides.map((sl,i)=><div key={i} className="card"><div className="form-grid"><label>Slide {i+1} image<input value={sl.image_url||''} onChange={e=>patchContent(x=>{x.items=x.items||[];x.items[i].image_url=e.target.value})}/></label><label>Mobile image<input value={sl.mobile_image_url||''} onChange={e=>patchContent(x=>{x.items=x.items||[];x.items[i].mobile_image_url=e.target.value})}/></label><label>Title<input value={sl.title||''} onChange={e=>patchContent(x=>{x.items[i].title=e.target.value})}/></label><label>CTA link<input value={sl.cta?.href||''} onChange={e=>patchContent(x=>{x.items[i].cta={...(x.items[i].cta||{}),href:e.target.value}})}/></label></div><div className="form-actions"><Button onClick={()=>patchContent(x=>x.items.splice(i,1))}><Trash2 size={13}/> Remove</Button></div></div>)}<Button onClick={()=>patchContent(x=>{x.items=x.items||[];x.items.push({image_url:'',title:'',subtitle:'',cta:{label:'Shop Now',href:'/shop'}})})}><Plus size={13}/> Add slide</Button></div>})()}</Card>}
