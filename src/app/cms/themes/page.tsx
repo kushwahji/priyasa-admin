@@ -45,8 +45,12 @@ export default function Themes(){
     api<Theme[]>(API_ROUTES.cms.themes),
     api<{mode:string;theme_key:string}>(API_ROUTES.cms.themeSettings)
    ]);
-   setThemes(r.data||[]);
-   if(s.data)setSettings({mode:s.data.mode,theme_key:s.data.theme_key});
+   const themeData:any=r.data;
+   const themeRows=Array.isArray(themeData)?themeData:(Array.isArray(themeData?.data)?themeData.data:(Array.isArray(themeData?.items)?themeData.items:[]));
+   setThemes(themeRows);
+   const settingData:any=s.data;
+   const setting=settingData?.data && !Array.isArray(settingData.data)?settingData.data:settingData;
+   if(setting && typeof setting==='object')setSettings({mode:setting.mode||'automatic',theme_key:setting.theme_key||'default'});
   }catch(e){setError(e instanceof Error?e.message:'Unable to load themes');}
  }
  useEffect(()=>{load();},[]);
