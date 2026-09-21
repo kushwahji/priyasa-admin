@@ -53,7 +53,7 @@ export default function Cms(){
  }
 
  const existing=useMemo(()=>new Set((list?.data||[]).map(s=>s.key)),[list]);
- const STANDARD_ORDER=useMemo(()=>BLOCKS.map((x,i)=>({key:x[0],order:(i+1)*10})),[]);
+ const STANDARD_ORDER=useMemo(()=>['home-hero','home-promises','home-trending','home-editorial','home-flash-sale','home-offer-images','home-all-products','home-recommendations','home-offer-banner','home-review-carousel','home-thank-you'].map((key,i)=>({key,order:(i+1)*10})),[]);
  async function resetLayout(){
   if(!list?.data?.length)return;
   if(!confirm('Reset section order to the PRIYASA default layout? This changes order only; content and publishing state stay unchanged.'))return;
