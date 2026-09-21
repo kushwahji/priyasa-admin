@@ -15,7 +15,7 @@ const BLOCKS=[
  ['home-hero','Hero slider','hero_slider'],['home-promises','Service strip','service_strip'],['home-categories','Category tiles','category_tiles'],
  ['home-new-arrivals','New arrivals','product_carousel'],['home-editorial','Editorial grid','editorial_grid'],['home-flash-sale','Flash sale','flash_sale'],
  ['home-offer-banner','Offer banner','offer_banner'],['home-trending','Trending now','product_carousel'],['home-best-sellers','Best sellers','product_carousel'],
- ['home-brands','Brand carousel','brand_carousel'],['home-all-products','Product grid','product_grid'],['home-review-carousel','Review carousel','review_carousel'],['home-recommendations','Recommendations','personalized_products'],
+ ['home-brands','Brand carousel','brand_carousel'],['home-offer-images','Offer images','image_grid'],['home-all-products','Product grid','product_grid'],['home-review-carousel','Review carousel','review_carousel'],['home-recommendations','Recommendations','personalized_products'],
  ['home-image-carousel','Image carousel','image_carousel'],['home-image-grid','Image grid','image_grid'],['home-split-banner','Split image banner','split_banner'],['home-promo-tiles','Promo tiles','promo_tiles'],['home-text-banner','Text / announcement','text_banner'],['home-video-banner','Video banner','video_banner']
 ] as const;
 
@@ -46,7 +46,12 @@ function parse(value:string){try{return JSON.parse(value||'{}')}catch{throw new 
 function normalizeSections(value:any):List{const root=value?.data && !Array.isArray(value.data)?value.data:value;const rows=Array.isArray(root)?root:(Array.isArray(root?.data)?root.data:(Array.isArray(root?.items)?root.items:[]));return {data:rows,current_page:Number(root?.current_page||1),last_page:Number(root?.last_page||1)}}
 
 export default function Cms(){
- const [list,setList]=useState<List|null>(null),[q,setQ]=useState(''),[editing,setEditing]=useState<Section|null>(null),[open,setOpen]=useState(false),[form,setForm]=useState<Form>({...blank}),[busy,setBusy]=useState(false),[error,setError]=useState(''),[uploading,setUploading]=useState(false);
+ const [list,setList]=useState<List|null>(null),[q,setQ]=useState(''),[editing,setEditing]=useState<Section|null>(null),[open,setOpen]=useState(false),[form,setForm]=useState<Form>({...blank}),[busy,setBusy]=useState(false),[error,setError]=useState(''),[uploading,setUploading]=useState(false); async function autoConfigure(){
+  if(!confirm('Configure the default PRIYASA homepage? Existing section content, active state and images will be preserved; only missing sections are created and standard order is restored.'))return;
+  setBusy(true);setError('');
+  try{const r=await api('/admin/cms/auto-configure',{method:'POST'});if(!r.success)throw new Error(r.message||'Unable to configure homepage');await load();}catch(e){setError(apiMessage(e,'Unable to configure default homepage'))}finally{setBusy(false)}
+ }
+
  const existing=useMemo(()=>new Set((list?.data||[]).map(s=>s.key)),[list]);
  const STANDARD_ORDER=useMemo(()=>BLOCKS.map((x,i)=>({key:x[0],order:(i+1)*10})),[]);
  async function resetLayout(){
@@ -106,7 +111,7 @@ export default function Cms(){
   }catch(e){setError(apiMessage(e,'Unable to reorder blocks'))}finally{setBusy(false)}}
 
  return <section className="content">
-  <PageHeader title="Home Page Builder" description="Build /home visually from CMS data: upload or paste images, control banners, offers, carousels, grids, product feeds, flash sales and schedules." action={<div className="form-actions"><Button onClick={load} disabled={busy}><RefreshCw size={14}/> Refresh</Button><Button onClick={resetLayout} disabled={busy||!list?.data?.length}>Reset order</Button><Button className="primary" onClick={()=>openEditor()}><Plus size={14}/> Add section</Button></div>}/>
+  <PageHeader title="Home Page Builder" description="Build /home visually from CMS data: upload or paste images, control banners, offers, carousels, grids, product feeds, flash sales and schedules." action={<div className="form-actions"><Button onClick={load} disabled={busy}><RefreshCw size={14}/> Refresh</Button><Button onClick={autoConfigure} disabled={busy}>Auto Configure Homepage</Button><Button onClick={resetLayout} disabled={busy||!list?.data?.length}>Reset order</Button><Button className="primary" onClick={()=>openEditor()}><Plus size={14}/> Add section</Button></div>}/>
   {error&&<ErrorState error={error} onRetry={load}/>}
   <Card><div className="card-title">Quick add home blocks</div><p className="muted">Add sections, drag their order with arrows, choose Grid / Carousel / Rail for supported sections, select products or collections, upload banners and schedule campaigns. The storefront receives the final rendered Home API.</p><div className="quick">{BLOCKS.filter(x=>!existing.has(x[0])).map(x=><button key={x[0]} className="btn" onClick={()=>openEditor(undefined,x[0])}><Plus size={13}/>{x[1]}</button>)}</div>{existing.size===BLOCKS.length&&<div className="muted">All standard home blocks are configured.</div>}</Card>
   {!list&&!error?<Loading/>:list?.data?.length?<Card><div className="card-title">Home layout</div><p className="muted">Lower sort order appears first. Use arrows for fast merchandising order.</p><div className="cms-list">{[...list.data].sort((a,b)=>a.sort_order-b.sort_order).map((s,i)=><div className="cms-row" key={String(s.id)}>
