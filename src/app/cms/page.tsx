@@ -15,7 +15,7 @@ const BLOCKS=[
  ['home-hero','Hero slider','hero_slider'],['home-promises','Service strip','service_strip'],['home-categories','Category tiles','category_tiles'],
  ['home-new-arrivals','New arrivals','product_carousel'],['home-editorial','Editorial grid','editorial_grid'],['home-flash-sale','Flash sale','flash_sale'],
  ['home-offer-banner','Offer banner','offer_banner'],['home-trending','Trending now','product_carousel'],['home-best-sellers','Best sellers','product_carousel'],
- ['home-brands','Brand carousel','brand_carousel'],['home-offer-images','Offer images','image_grid'],['home-all-products','Product grid','product_grid'],['home-review-carousel','Review carousel','review_carousel'],['home-recommendations','Recommendations','personalized_products'],
+ ['home-brands','Brand carousel','brand_carousel'],['home-offer-images','Offer images','image_grid'],['home-all-products','Product grid','product_grid'],['home-review-carousel','Review carousel','review_carousel'],['home-thank-you','Thank you','service_strip'],['home-recommendations','Recommendations','personalized_products'],
  ['home-image-carousel','Image carousel','image_carousel'],['home-image-grid','Image grid','image_grid'],['home-split-banner','Split image banner','split_banner'],['home-promo-tiles','Promo tiles','promo_tiles'],['home-text-banner','Text / announcement','text_banner'],['home-video-banner','Video banner','video_banner']
 ] as const;
 
