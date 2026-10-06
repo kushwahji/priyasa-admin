@@ -16,6 +16,11 @@ const protectedRoutes = [
   '/integrations',
   '/security',
   '/settings',
+  '/notifications',
+  '/automation',
+  '/events',
+  '/support',
+  '/finance',
 ];
 
 test('admin login page renders securely', async ({ page }) => {
@@ -64,7 +69,7 @@ test('authenticated admin smoke is enabled only with an explicit E2E token', asy
   await expect(page).toHaveURL(/\/$/);
   await expect(page.getByRole('heading', { name: /dashboard/i })).toBeVisible();
 
-  for (const route of ['/products', '/orders', '/customers', '/inventory', '/returns', '/cms', '/analytics', '/integrations', '/security']) {
+  for (const route of ['/products', '/orders', '/customers', '/inventory', '/returns', '/cms', '/analytics', '/integrations', '/security', '/notifications', '/automation', '/events', '/support', '/finance']) {
     const response = await page.goto(route, { waitUntil: 'domcontentloaded' });
     expect(response?.status() ?? 200, route).toBeLessThan(500);
     await expect(page.locator('.content')).toBeVisible();
