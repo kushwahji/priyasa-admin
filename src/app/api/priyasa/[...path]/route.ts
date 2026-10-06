@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 
-const UPSTREAM = (process.env.PRIYASA_API_BASE_URL || process.env.NEXT_PUBLIC_API_URL || 'https://api.priyasa.com/api/v1').replace(/\/$/, '');
+const UPSTREAM = (process.env.PRIYASA_API_BASE_URL || process.env.NEXT_PUBLIC_API_BASE_URL || process.env.NEXT_PUBLIC_API_URL || 'https://api.priyasa.com/api/v1').replace(/\/$/, '');
 
 function upstreamUrl(path: string, request: NextRequest) {
   const clean = path.replace(/^\/+/, '');
